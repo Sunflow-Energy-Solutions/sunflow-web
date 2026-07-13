@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { blogPosts } from "@/lib/blog-data";
+import { getAllShopItemIds } from "@/lib/shop-detail";
 
 const baseUrl = "https://www.sunflowenergysolutions.com.au";
 
@@ -30,5 +31,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...blogRoutes];
+  const shopItemRoutes = getAllShopItemIds().map((id) => ({
+    url: `${baseUrl}/ev-charging/shop/${id}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.5,
+  }));
+
+  return [...staticRoutes, ...blogRoutes, ...shopItemRoutes];
 }

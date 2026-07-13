@@ -14,20 +14,24 @@ export default function ShopProductCard({ item }: { item: ShopGridItem }) {
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl border border-mist-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-navy-900/10">
-      <ChargerThumbnail
-        kind={item.thumbnail}
-        brand={item.brand}
-        photoUrl={item.photoUrl}
-        photoFit={item.photoFit}
-        className="h-28 transition-transform duration-500 group-hover:scale-105 sm:h-32"
-        initialsClassName="text-xl sm:text-2xl"
-        badgeClassName="-bottom-1 -right-1 h-6 w-6"
-      />
+      <Link href={`/ev-charging/shop/${item.id}`} className="cursor-pointer">
+        <ChargerThumbnail
+          kind={item.thumbnail}
+          brand={item.brand}
+          photoUrl={item.photoUrl}
+          photoFit={item.photoFit}
+          className="h-28 transition-transform duration-500 group-hover:scale-105 sm:h-32"
+          initialsClassName="text-xl sm:text-2xl"
+          badgeClassName="-bottom-1 -right-1 h-6 w-6"
+        />
+      </Link>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
-        <h3 className="line-clamp-2 font-display text-xs font-semibold leading-snug text-navy-950 sm:text-sm">
-          {item.name}
-        </h3>
+        <Link href={`/ev-charging/shop/${item.id}`} className="cursor-pointer hover:text-solar-600">
+          <h3 className="line-clamp-2 font-display text-xs font-semibold leading-snug text-navy-950 sm:text-sm">
+            {item.name}
+          </h3>
+        </Link>
         <p className="mt-1 line-clamp-1 text-[11px] text-mist-500 sm:text-xs">{item.subtitle}</p>
 
         <div className="mt-auto pt-3">

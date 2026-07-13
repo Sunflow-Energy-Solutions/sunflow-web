@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ArrowDownAZ, ArrowDownWideNarrow, ArrowUpWideNarrow, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
 import { residentialChargers } from "@/lib/residential-chargers";
@@ -214,7 +215,7 @@ export default function ResidentialChargerTable() {
                   {filtered.map((c, i) => (
                     <tr key={c.id} className={i % 2 === 0 ? "bg-white" : "bg-mist-50"}>
                       <th scope="row" className="sticky left-0 z-10 bg-inherit px-4 py-3.5 font-medium text-navy-950">
-                        <div className="flex items-center gap-3">
+                        <Link href={`/ev-charging/shop/${c.id}`} className="flex cursor-pointer items-center gap-3 hover:text-solar-600">
                           <ChargerThumbnail
                             kind="residential"
                             brand={c.brand}
@@ -228,7 +229,7 @@ export default function ResidentialChargerTable() {
                             {c.brand}
                             <div className="text-xs font-normal text-mist-500">{c.variant}</div>
                           </div>
-                        </div>
+                        </Link>
                       </th>
                       <td className="whitespace-nowrap px-4 py-3.5 font-semibold text-navy-950">
                         {formatChargerPrice(c.price, c.priceDisplay)}
