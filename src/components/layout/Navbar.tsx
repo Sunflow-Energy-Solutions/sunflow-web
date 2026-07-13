@@ -33,16 +33,25 @@ export default function Navbar() {
   return (
     <header
       className={clsx(
-        "sticky top-0 z-50 w-full transition-all duration-300",
+        "sticky top-0 z-50 w-full border-b transition-all duration-300",
         scrolled
-          ? "bg-navy-950/95 shadow-lg shadow-navy-950/10 backdrop-blur-md"
-          : "bg-navy-950"
+          ? "border-mist-200 bg-white/95 shadow-sm backdrop-blur-md"
+          : "border-mist-100 bg-white"
       )}
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
-        <Link href="/" className="flex shrink-0 items-center rounded-xl bg-white px-3 py-2 shadow-sm">
+        <Link
+          href="/"
+          onClick={(e) => {
+            if (pathname === "/") {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex shrink-0 items-center"
+        >
           <Image
-            src="/images/logo-cropped.png"
+            src="/images/logo-transparent.png"
             alt={`${siteConfig.name} logo`}
             width={380}
             height={124}
@@ -65,8 +74,8 @@ export default function Navbar() {
                 className={clsx(
                   "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                   pathname === link.href
-                    ? "text-solar-400"
-                    : "text-mist-100 hover:text-white"
+                    ? "text-solar-600"
+                    : "text-navy-700 hover:text-navy-950"
                 )}
               >
                 {link.label}
@@ -74,12 +83,12 @@ export default function Navbar() {
               </Link>
               {link.children && openDropdown === link.href && (
                 <div className="absolute left-0 top-full pt-2">
-                  <div className="w-52 overflow-hidden rounded-xl border border-white/10 bg-navy-900 py-2 shadow-xl">
+                  <div className="w-52 overflow-hidden rounded-xl border border-mist-200 bg-white py-2 shadow-xl">
                     {link.children.map((child) => (
                       <Link
                         key={child.href}
                         href={child.href}
-                        className="block px-4 py-2.5 text-sm text-mist-100 hover:bg-navy-800 hover:text-solar-400"
+                        className="block px-4 py-2.5 text-sm text-navy-700 hover:bg-mist-50 hover:text-solar-600"
                       >
                         {child.label}
                       </Link>
@@ -96,7 +105,7 @@ export default function Navbar() {
             type="button"
             onClick={openCart}
             aria-label={`Open cart, ${itemCount} item${itemCount === 1 ? "" : "s"}`}
-            className="relative hidden cursor-pointer rounded-full p-2.5 text-mist-100 transition-colors hover:bg-white/10 hover:text-white sm:inline-flex"
+            className="relative hidden cursor-pointer rounded-full p-2.5 text-navy-700 transition-colors hover:bg-mist-100 hover:text-navy-950 sm:inline-flex"
           >
             <ShoppingCart className="h-5 w-5" />
             {itemCount > 0 && (
@@ -112,7 +121,7 @@ export default function Navbar() {
             type="button"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             onClick={() => setMobileOpen((v) => !v)}
-            className="cursor-pointer rounded-full p-2.5 text-white transition-colors hover:bg-white/10 lg:hidden"
+            className="cursor-pointer rounded-full p-2.5 text-navy-900 transition-colors hover:bg-mist-100 lg:hidden"
           >
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -120,23 +129,23 @@ export default function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-white/10 bg-navy-950 lg:hidden">
+        <div className="border-t border-mist-200 bg-white lg:hidden">
           <div className="space-y-1 px-5 py-4">
             {navLinks.map((link) => (
               <div key={link.href}>
                 <Link
                   href={link.href}
-                  className="block rounded-lg px-3 py-3 text-base font-medium text-mist-100 hover:bg-white/5 hover:text-solar-400"
+                  className="block rounded-lg px-3 py-3 text-base font-medium text-navy-700 hover:bg-mist-50 hover:text-solar-600"
                 >
                   {link.label}
                 </Link>
                 {link.children && (
-                  <div className="ml-4 space-y-1 border-l border-white/10 pl-3">
+                  <div className="ml-4 space-y-1 border-l border-mist-200 pl-3">
                     {link.children.slice(1).map((child) => (
                       <Link
                         key={child.href}
                         href={child.href}
-                        className="block rounded-lg px-3 py-2 text-sm text-mist-300 hover:text-solar-400"
+                        className="block rounded-lg px-3 py-2 text-sm text-mist-500 hover:text-solar-600"
                       >
                         {child.label}
                       </Link>
@@ -145,11 +154,11 @@ export default function Navbar() {
                 )}
               </div>
             ))}
-            <div className="mt-3 flex items-center gap-3 border-t border-white/10 pt-4">
+            <div className="mt-3 flex items-center gap-3 border-t border-mist-200 pt-4">
               <button
                 type="button"
                 onClick={openCart}
-                className="relative inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-medium text-white"
+                className="relative inline-flex cursor-pointer items-center gap-2 rounded-full border border-mist-200 px-4 py-2.5 text-sm font-medium text-navy-900"
               >
                 <ShoppingCart className="h-4 w-4" /> Cart
                 {itemCount > 0 && (
@@ -163,7 +172,7 @@ export default function Navbar() {
               </Button>
             </div>
             {siteConfig.phoneHref && (
-              <a href={siteConfig.phoneHref} className="mt-3 flex items-center gap-2 px-3 text-sm text-mist-300">
+              <a href={siteConfig.phoneHref} className="mt-3 flex items-center gap-2 px-3 text-sm text-mist-500">
                 <Phone className="h-4 w-4" /> {siteConfig.phone}
               </a>
             )}

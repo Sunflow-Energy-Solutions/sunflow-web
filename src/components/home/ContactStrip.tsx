@@ -20,9 +20,9 @@ export default function ContactStrip() {
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-navy-900 text-solar-400">
                   <Icon className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-mist-400">{label}</p>
-                  <p className="mt-0.5 text-sm font-semibold text-navy-900">{value}</p>
+                  <p className="mt-0.5 break-words text-sm font-semibold text-navy-900">{value}</p>
                 </div>
               </div>
             );
