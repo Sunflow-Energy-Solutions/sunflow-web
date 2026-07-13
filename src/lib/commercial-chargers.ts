@@ -242,7 +242,7 @@ export const commercialChargers: CommercialCharger[] = [
   },
   {
     id: `com-autel-maxicharger-ac-wallbox-commercial-ac-wallbox-single-phase`,
-    photoUrl: `/images/chargers/autel-ac-wallbox.png`,
+    photoUrl: `/images/chargers/autel-ac-wallbox-commercial.png`,
     photoFit: `contain`,
     category: `Commercial`,
     brand: `Autel MaxiCharger AC Wallbox (Commercial)`,
@@ -276,7 +276,7 @@ export const commercialChargers: CommercialCharger[] = [
   },
   {
     id: `com-autel-maxicharger-ac-wallbox-commercial-ac-wallbox-three-phase`,
-    photoUrl: `/images/chargers/autel-ac-wallbox.png`,
+    photoUrl: `/images/chargers/autel-ac-wallbox-commercial.png`,
     photoFit: `contain`,
     category: `Commercial`,
     brand: `Autel MaxiCharger AC Wallbox (Commercial)`,
