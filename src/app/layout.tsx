@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
 import CartDrawer from "@/components/shop/CartDrawer";
+import BackToTop from "@/components/ui/BackToTop";
 import { CartProvider } from "@/lib/cart-context";
 
 const inter = Inter({
@@ -71,6 +72,7 @@ export default function RootLayout({
           <Footer />
           <ChatWidget />
           <CartDrawer />
+          <BackToTop />
         </CartProvider>
       </body>
     </html>
