@@ -48,9 +48,9 @@ export default function Footer() {
     <footer className="bg-navy-950 text-mist-300">
       <Container className="grid grid-cols-1 gap-12 py-16 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr]">
         <div>
-          <Link href="/" className="inline-flex items-center rounded-xl bg-white px-3 py-2">
+          <Link href="/" className="inline-flex items-center">
             <Image
-              src="/images/logo-cropped.png"
+              src="/images/logo-light.png"
               alt={`${siteConfig.name} logo`}
               width={380}
               height={124}
