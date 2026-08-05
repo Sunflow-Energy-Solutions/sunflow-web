@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDownAZ, ArrowDownWideNarrow, ArrowUpWideNarrow, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
+import { ArrowDownAZ, Maximize2, Minimize2, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
 import { commercialChargers } from "@/lib/commercial-chargers";
 import { chargerToCartProduct } from "@/lib/products";
@@ -11,20 +11,14 @@ import { useCart } from "@/lib/cart-context";
 import FeatureIcon from "./FeatureIcon";
 import FilterPillGroup from "./FilterPillGroup";
 import FilterCheckbox from "./FilterCheckbox";
-import PriceRangeFilter from "./PriceRangeFilter";
 import ChargerThumbnail from "./ChargerThumbnail";
 import ChargerTableShell from "./ChargerTableShell";
-
-type SortMode = "name" | "price-asc" | "price-desc";
 
 const PHASE_OPTIONS = ["Single", "Three", "Both"] as const;
 const HEADER_CELL = "sticky top-0 z-20 bg-navy-950 px-4 py-3.5 font-display font-semibold whitespace-nowrap";
 
 export default function CommercialChargerTable() {
   const { addItem } = useCart();
-  const prices = commercialChargers.map((c) => c.price).filter((p): p is number => p !== null);
-  const priceMin = Math.min(...prices);
-  const priceMax = Math.max(...prices);
   const ipRatings = Array.from(new Set(commercialChargers.map((c) => c.ipRating))).sort();
   const chargerTypes = Array.from(new Set(commercialChargers.map((c) => c.chargerType))).sort();
 
@@ -34,13 +28,10 @@ export default function CommercialChargerTable() {
   const [loadManagementOnly, setLoadManagementOnly] = useState(false);
   const [ocppOnly, setOcppOnly] = useState(false);
   const [bidirectionalOnly, setBidirectionalOnly] = useState(false);
-  const [maxPrice, setMaxPrice] = useState(priceMax);
-  const [sort, setSort] = useState<SortMode>("name");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const filtered = useMemo(() => {
-    const isPriceFiltered = maxPrice < priceMax;
     const list = commercialChargers.filter((c) => {
       if (chargerType && c.chargerType !== chargerType) return false;
       if (phase && c.phase !== phase) return false;
@@ -48,17 +39,10 @@ export default function CommercialChargerTable() {
       if (loadManagementOnly && !c.loadManagement) return false;
       if (ocppOnly && !c.ocppCompatible) return false;
       if (bidirectionalOnly && !c.bidirectional) return false;
-      if (isPriceFiltered) {
-        if (c.price === null || c.price > maxPrice) return false;
-      }
       return true;
     });
-    return list.sort((a, b) => {
-      if (sort === "price-asc") return (a.price ?? Infinity) - (b.price ?? Infinity);
-      if (sort === "price-desc") return (b.price ?? -Infinity) - (a.price ?? -Infinity);
-      return a.brand.localeCompare(b.brand);
-    });
-  }, [chargerType, phase, ipRating, loadManagementOnly, ocppOnly, bidirectionalOnly, maxPrice, sort, priceMax]);
+    return list.sort((a, b) => a.brand.localeCompare(b.brand));
+  }, [chargerType, phase, ipRating, loadManagementOnly, ocppOnly, bidirectionalOnly]);
 
   const resetFilters = () => {
     setChargerType(null);
@@ -67,7 +51,6 @@ export default function CommercialChargerTable() {
     setLoadManagementOnly(false);
     setOcppOnly(false);
     setBidirectionalOnly(false);
-    setMaxPrice(priceMax);
   };
 
   const filterPanel = (
@@ -78,7 +61,6 @@ export default function CommercialChargerTable() {
           Reset all
         </button>
       </div>
-      <PriceRangeFilter min={priceMin} max={priceMax} value={maxPrice} onChange={setMaxPrice} />
       <FilterPillGroup label="Charger Type" options={chargerTypes} active={chargerType} onChange={setChargerType} />
       <FilterPillGroup label="Phase" options={PHASE_OPTIONS} active={phase} onChange={setPhase} />
       <FilterPillGroup label="IP Rating" options={ipRatings} active={ipRating} onChange={setIpRating} />
@@ -146,27 +128,9 @@ export default function CommercialChargerTable() {
             <div className="flex items-center gap-1.5">
               {expandButton}
               <span className="mx-1 h-4 w-px bg-mist-200" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => setSort("name")}
-                className={clsx("flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium", sort === "name" ? "border-navy-900 bg-navy-900 text-white" : "border-mist-200 text-navy-700")}
-              >
+              <span className="flex items-center gap-1.5 rounded-full border border-navy-900 bg-navy-900 px-3 py-1.5 text-xs font-medium text-white">
                 <ArrowDownAZ className="h-3.5 w-3.5" /> Name
-              </button>
-              <button
-                type="button"
-                onClick={() => setSort("price-asc")}
-                className={clsx("flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium", sort === "price-asc" ? "border-navy-900 bg-navy-900 text-white" : "border-mist-200 text-navy-700")}
-              >
-                <ArrowUpWideNarrow className="h-3.5 w-3.5" /> Price: Low
-              </button>
-              <button
-                type="button"
-                onClick={() => setSort("price-desc")}
-                className={clsx("flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium", sort === "price-desc" ? "border-navy-900 bg-navy-900 text-white" : "border-mist-200 text-navy-700")}
-              >
-                <ArrowDownWideNarrow className="h-3.5 w-3.5" /> Price: High
-              </button>
+              </span>
             </div>
           </div>
 
