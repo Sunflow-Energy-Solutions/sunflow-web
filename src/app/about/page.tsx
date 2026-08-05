@@ -15,9 +15,7 @@ export const metadata: Metadata = {
 };
 
 const stats = [
-  { value: "2,500+", label: "Systems Installed" },
-  { value: "15+", label: "Years Combined Experience" },
-  { value: "4.9/5", label: "Average Customer Rating" },
+  { value: "30+", label: "Years Combined Experience" },
   { value: "100%", label: "Clean Energy Council Accredited" },
 ];
 
@@ -66,11 +64,11 @@ export default function AboutPage() {
           <Reveal delay={100}>
             <div className="relative mx-auto aspect-square w-full max-w-sm">
               <SunburstMotif className="absolute inset-0 h-full w-full animate-spin-slow" />
-              <div className="absolute inset-0 grid grid-cols-2 gap-4 p-10">
+              <div className="absolute inset-0 grid grid-cols-2 gap-6 p-14">
                 {stats.map((s) => (
                   <div key={s.label} className="flex flex-col items-center justify-center text-center">
-                    <span className="font-display text-2xl font-bold text-navy-950 sm:text-3xl">{s.value}</span>
-                    <span className="mt-1 text-xs font-medium text-mist-500">{s.label}</span>
+                    <span className="font-display text-3xl font-bold text-navy-950 sm:text-4xl">{s.value}</span>
+                    <span className="mt-1.5 text-xs font-medium text-mist-500">{s.label}</span>
                   </div>
                 ))}
               </div>

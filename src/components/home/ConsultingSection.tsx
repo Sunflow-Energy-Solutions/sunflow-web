@@ -19,7 +19,7 @@ export default function ConsultingSection() {
           <div className="relative mx-auto aspect-square w-full max-w-md">
             <SunburstMotif className="absolute inset-0 h-full w-full animate-spin-slow" />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="font-display text-5xl font-bold text-navy-950">15+</span>
+              <span className="font-display text-5xl font-bold text-navy-950">30+</span>
               <span className="mt-1 text-sm font-medium text-mist-500">Years combined<br />industry experience</span>
             </div>
           </div>

@@ -29,10 +29,10 @@ const products = [
     features: ["Wall or floor mount", "10-year performance warranty", "Backup power for essential circuits", "App monitoring & scheduling"],
   },
   {
-    name: "Sunflow Home 15",
-    capacity: "15.3 kWh",
-    best: "Larger households & EV owners",
-    features: ["Whole-home backup capable", "Expandable in 5kWh modules", "10-year performance warranty", "Solar + EV smart integration"],
+    name: "Sunflow Home 15-50",
+    capacity: "15.3 kWh – 48 kWh",
+    best: "Larger households, EV owners & 3-phase homes",
+    features: ["Whole-home backup capable", "Expandable in 5kWh modules up to 48kWh", "10-year performance warranty", "Solar + EV smart integration"],
     featured: true,
   },
   {
@@ -83,14 +83,14 @@ export default function BatteryPage() {
           <SectionHeading
             eyebrow="Energy Independence"
             title="Backup power when you need it most"
-            description="Victorian summers bring storms and grid instability. A Sunflow battery keeps your fridge, lights and essential circuits running automatically — no generator required."
+            description="Victorian summers bring storms and grid instability. A battery keeps your fridge, lights and essential circuits running automatically — no generator required."
             light
           />
           <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-3">
             {[
               { stat: "< 20ms", label: "Automatic switchover to backup power" },
               { stat: "72+ hrs", label: "Typical essential-circuit backup runtime*" },
-              { stat: "24/7", label: "Remote monitoring via the Sunflow app" },
+              { stat: "24/7", label: "Remote monitoring via a dedicated app" },
             ].map((item, i) => (
               <Reveal key={item.label} delay={i * 100}>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-7 text-center">

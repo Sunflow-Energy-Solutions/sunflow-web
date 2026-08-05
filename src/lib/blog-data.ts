@@ -11,6 +11,63 @@ export type BlogPost = {
 
 export const blogPosts: BlogPost[] = [
   {
+    slug: "single-phase-vs-three-phase-power-explained",
+    title: "Single-Phase vs Three-Phase Power: What It Means for Solar, Battery and EV Charging",
+    excerpt:
+      "Your property's power supply quietly determines how big your solar, battery and EV charging system can go. Here's how to check which one you have.",
+    category: "Guides",
+    date: "2026-06-18",
+    readTime: "5 min read",
+    author: "Sunflow Energy Team",
+    content: [
+      "Most Victorian homes are wired for either single-phase or three-phase power, and the difference has a bigger impact on your clean energy options than most homeowners realise.",
+      "Single-phase supply is the standard for smaller and older homes. It comfortably supports a solar system, a 7kW EV charger, and a home battery — but there's a ceiling on how much power you can draw or export at once.",
+      "Three-phase supply splits the load across three separate circuits, which is common in larger homes, newer builds, and properties with ducted air conditioning or a pool. It raises that ceiling significantly.",
+      "For batteries specifically, three-phase properties can support larger systems — stacking multiple modules well beyond what a single-phase connection allows — because the extra capacity is there to charge and discharge without tripping limits.",
+      "For EV charging, three-phase unlocks 22kW charging speeds instead of being capped around 7kW on single-phase, cutting a typical overnight charge time significantly.",
+      "You can usually tell which supply you have by checking your switchboard for three incoming red service fuses instead of one, or by checking a recent electricity bill. If you're unsure, our electricians confirm it as a standard part of every site assessment.",
+      "If you're planning a larger battery or a fast home EV charger, it's worth finding out early — in some cases, upgrading from single to three-phase is straightforward and opens up meaningfully more headroom for your system.",
+    ],
+  },
+  {
+    slug: "victorian-feed-in-tariffs-2026",
+    title: "Victorian Feed-in Tariffs in 2026: Why Exporting Solar Is Worth Less",
+    excerpt:
+      "Feed-in tariffs have been falling for years while retail electricity prices keep climbing. Here's what that gap means for how you should be using your solar.",
+    category: "Solar",
+    date: "2026-05-07",
+    readTime: "5 min read",
+    author: "Sunflow Energy Team",
+    content: [
+      "If you installed solar a few years ago, you may remember feed-in tariffs being high enough that exporting excess power back to the grid felt like a genuine income stream. That gap has narrowed sharply.",
+      "Minimum feed-in tariffs set by the Essential Services Commission have trended downward as more rooftop solar comes online across Victoria, while retail electricity prices have continued to climb over the same period.",
+      "The practical effect is simple: a kilowatt-hour of solar you export to the grid is now worth a fraction of what the same kilowatt-hour would save you if you used it yourself, or a battery stored it for you to use after sunset.",
+      "This is the main reason battery economics have improved even as panel and inverter prices have come down — the value isn't just backup power, it's capturing energy that would otherwise be exported for very little.",
+      "Some retailers also now offer time-varying feed-in tariffs, paying more for exports during evening peak demand windows. Pairing this with a battery that discharges strategically, rather than exporting everything as it's generated, can meaningfully change your bill.",
+      "We review your actual export and usage data during a free consultation and model whether your household would benefit more from a bigger solar system, a battery, or adjusting your tariff plan — with honest numbers either way.",
+    ],
+  },
+  {
+    slug: "choosing-a-solar-battery-installer-victoria",
+    title: "How to Choose a Solar and Battery Installer in Victoria: 7 Questions to Ask",
+    excerpt:
+      "Not all installers are equal. Here are the questions worth asking before you sign a quote, and the red flags that should make you pause.",
+    category: "Guides",
+    date: "2026-03-25",
+    readTime: "6 min read",
+    author: "Sunflow Energy Team",
+    content: [
+      "Solar and battery installation is a competitive industry, and unfortunately that means quality varies enormously between providers. A few good questions upfront can save you years of headaches.",
+      "Ask whether the installer and the business are Clean Energy Council (CEC) accredited. This isn't optional — CEC accreditation is required for most Victorian and federal rebates, and it's a baseline indicator of proper training.",
+      "Ask who will actually be on the roof. Some larger companies subcontract installation crews they've never met. A business that uses its own licensed, in-house electricians has more accountability for the quality of the work.",
+      "Ask for the manufacturer warranty terms in writing — not just the headline number of years, but what's covered, whether it includes labour, and whether the installer is an authorised dealer for that brand.",
+      "Ask what happens if something goes wrong after switch-on. Who do you call, how quickly do they respond, and is that support local or outsourced overseas?",
+      "Be cautious of quotes that arrive within minutes of a cold call, high-pressure 'today only' discounts, and prices that seem far below every other quote you've received — undersized systems and corner-cut installations are common ways installers hit unrealistically low numbers.",
+      "Finally, ask for an itemised quote showing panel brand and model, inverter brand and model, battery specifics if included, and all rebates applied — not just a single bottom-line figure. A transparent installer will have no problem providing this.",
+      "We're always happy to have our quotes compared line-by-line against a competitor's — it's usually the fastest way to see the difference between a properly specified system and a stripped-down one.",
+    ],
+  },
+  {
     slug: "solar-rebates-victoria-2026-guide",
     title: "Victoria Solar Rebates in 2026: A Complete Guide",
     excerpt:
