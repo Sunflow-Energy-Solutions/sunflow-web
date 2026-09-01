@@ -2,9 +2,8 @@ export const siteConfig = {
   name: "Sunflow Energy Solutions",
   shortName: "Sunflow",
   tagline: "Power Your World, The Smart Way",
-  // TODO: client to supply phone number — placeholder disabled until provided
-  phone: "Phone number coming soon",
-  phoneHref: "",
+  phone: "(03) 9088 0322",
+  phoneHref: "tel:+61390880322",
   email: "info@sunflowenergysolutions.com.au",
   abn: "ABN 27 460 874 669",
   address: "Greater Melbourne & Victoria-wide",
