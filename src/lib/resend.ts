@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-export const NOTIFICATION_FROM = "Sunflow Website <onboarding@resend.dev>";
+export const NOTIFICATION_FROM = "Sunflow Website <no-reply@sunflowenergysolutions.com.au>";
 export const NOTIFICATION_TO = "admin@sunflowenergysolutions.com.au";
 
 let client: Resend | null = null;
