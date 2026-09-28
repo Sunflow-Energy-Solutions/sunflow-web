@@ -15,11 +15,34 @@ const serviceOptions = [
   "Not Sure Yet",
 ];
 
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1] ?? "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function QuoteForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  function handleFileChange(selected: File | null) {
+    if (selected && selected.size > MAX_FILE_BYTES) {
+      setFile(null);
+      setFileError("That file is too large to email — please choose one under 4MB.");
+      return;
+    }
+    setFileError(null);
+    setFile(selected);
+  }
 
   function toggleService(service: string) {
     setSelectedServices((prev) =>
@@ -27,14 +50,37 @@ export default function QuoteForm() {
     );
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
-    // Frontend demo only — connect to CRM/email service at launch.
-    window.setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+
+    const data = new FormData(e.currentTarget);
+
+    try {
+      const attachment = file ? { filename: file.name, base64: await fileToBase64(file) } : undefined;
+
+      const res = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name"),
+          phone: data.get("phone"),
+          email: data.get("email"),
+          address: data.get("address"),
+          services: selectedServices,
+          notes: data.get("notes"),
+          attachment,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
       setSubmitted(true);
-    }, 1000);
+    } catch {
+      setError("Something went wrong sending your request. Please try again, or call or email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -59,19 +105,19 @@ export default function QuoteForm() {
         <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
             <label htmlFor="quoteName" className="block text-sm font-medium text-navy-800">Full name</label>
-            <input id="quoteName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+            <input id="quoteName" name="name" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
           </div>
           <div>
             <label htmlFor="quotePhone" className="block text-sm font-medium text-navy-800">Phone number</label>
-            <input id="quotePhone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+            <input id="quotePhone" name="phone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="quoteEmail" className="block text-sm font-medium text-navy-800">Email address</label>
-            <input id="quoteEmail" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+            <input id="quoteEmail" name="email" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="quoteAddress" className="block text-sm font-medium text-navy-800">Property address</label>
-            <input id="quoteAddress" required type="text" placeholder="Street, suburb, postcode" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+            <input id="quoteAddress" name="address" required type="text" placeholder="Street, suburb, postcode" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
           </div>
         </div>
       </fieldset>
@@ -112,21 +158,22 @@ export default function QuoteForm() {
         >
           <FileUp className="h-6 w-6 text-solar-600" />
           <span className="text-sm font-medium text-navy-800">
-            {fileName ? fileName : "Click to upload or drag a file here"}
+            {file ? file.name : "Click to upload or drag a file here"}
           </span>
-          <span className="text-xs text-mist-400">PDF, JPG or PNG — max 10MB</span>
+          <span className="text-xs text-mist-400">PDF, JPG or PNG — max 4MB</span>
           <input
             id="billUpload"
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
             className="hidden"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+            onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
           />
         </label>
-        {fileName && (
+        {fileError && <p className="mt-2 text-xs font-medium text-red-600">{fileError}</p>}
+        {file && (
           <button
             type="button"
-            onClick={() => setFileName(null)}
+            onClick={() => handleFileChange(null)}
             className="mt-2 flex cursor-pointer items-center gap-1 text-xs font-medium text-mist-500 hover:text-red-500"
           >
             <X className="h-3.5 w-3.5" /> Remove file
@@ -137,12 +184,14 @@ export default function QuoteForm() {
       <fieldset className="mt-8">
         <legend className="font-display text-lg font-semibold text-navy-950">Additional Notes</legend>
         <textarea
+          name="notes"
           rows={4}
           placeholder="Tell us anything else that might help — e.g. roof type, current appliances, timeframe..."
           className="mt-3 w-full resize-none rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
         />
       </fieldset>
 
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={submitting} size="lg" className="mt-8 w-full justify-center" icon={<Send className="h-4 w-4" />}>
         {submitting ? "Submitting..." : "Request My Free Quote"}
       </Button>

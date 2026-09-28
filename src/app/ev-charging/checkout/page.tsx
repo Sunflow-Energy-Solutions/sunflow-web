@@ -15,19 +15,45 @@ export default function QuoteRequestPage() {
   const { items, subtotal, removeItem, clearCart } = useCart();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
-    // Frontend demo only — connect to CRM/email service at launch.
-    window.setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+
+    const data = new FormData(e.currentTarget);
+
+    try {
+      const res = await fetch("/api/ev-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: data.get("firstName"),
+          lastName: data.get("lastName"),
+          email: data.get("email"),
+          phone: data.get("phone"),
+          street: data.get("street"),
+          suburb: data.get("suburb"),
+          state: data.get("state"),
+          postcode: data.get("postcode"),
+          notes: data.get("notes"),
+          items: items.map(({ product, quantity }) => ({ name: product.name, quantity })),
+          estimatedTotal: formatPrice(total),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
       setSubmitted(true);
       clearCart();
-    }, 1200);
+    } catch {
+      setError("Something went wrong sending your request. Please try again, or call or email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -74,19 +100,19 @@ export default function QuoteRequestPage() {
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-navy-800">First name</label>
-                <input id="firstName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <input id="firstName" name="firstName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-navy-800">Last name</label>
-                <input id="lastName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <input id="lastName" name="lastName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
               </div>
               <div>
                 <label htmlFor="checkoutEmail" className="block text-sm font-medium text-navy-800">Email</label>
-                <input id="checkoutEmail" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <input id="checkoutEmail" name="email" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
               </div>
               <div>
                 <label htmlFor="checkoutPhone" className="block text-sm font-medium text-navy-800">Phone</label>
-                <input id="checkoutPhone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <input id="checkoutPhone" name="phone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
               </div>
             </div>
           </fieldset>
@@ -96,20 +122,20 @@ export default function QuoteRequestPage() {
             <div className="grid grid-cols-1 gap-5">
               <div>
                 <label htmlFor="street" className="block text-sm font-medium text-navy-800">Street address</label>
-                <input id="street" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <input id="street" name="street" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
               </div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
                 <div>
                   <label htmlFor="suburb" className="block text-sm font-medium text-navy-800">Suburb</label>
-                  <input id="suburb" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="suburb" name="suburb" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
                 <div>
                   <label htmlFor="state" className="block text-sm font-medium text-navy-800">State</label>
-                  <input id="state" defaultValue="VIC" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="state" name="state" defaultValue="VIC" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
                 <div>
                   <label htmlFor="postcode" className="block text-sm font-medium text-navy-800">Postcode</label>
-                  <input id="postcode" required type="text" inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="postcode" name="postcode" required type="text" inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
               </div>
             </div>
@@ -121,6 +147,7 @@ export default function QuoteRequestPage() {
               <label htmlFor="notes" className="block text-sm font-medium text-navy-800">Anything else we should know?</label>
               <textarea
                 id="notes"
+                name="notes"
                 rows={4}
                 placeholder="e.g. preferred install date, existing solar/battery setup, access notes"
                 className="mt-1.5 w-full resize-none rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
@@ -170,6 +197,7 @@ export default function QuoteRequestPage() {
             Estimate only — no payment is taken now. Final pricing is confirmed once we&apos;ve
             reviewed your installation address.
           </p>
+          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={submitting} size="lg" className="mt-4 w-full justify-center">
             {submitting ? "Submitting..." : "Submit Quote Request"}
           </Button>

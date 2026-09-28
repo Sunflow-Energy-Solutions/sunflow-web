@@ -7,15 +7,35 @@ import Button from "@/components/ui/Button";
 export default function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
-    // Frontend demo only — wire up to an email/CRM service (e.g. Formspree, SendGrid) at launch.
-    window.setTimeout(() => {
-      setSubmitting(false);
+    setError(null);
+
+    const data = new FormData(e.currentTarget);
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.get("name"),
+          phone: data.get("phone"),
+          email: data.get("email"),
+          subject: data.get("subject"),
+          message: data.get("message"),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Request failed");
       setSubmitted(true);
-    }, 900);
+    } catch {
+      setError("Something went wrong sending your message. Please try again, or call or email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -37,19 +57,19 @@ export default function ContactForm() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="contactName" className="block text-sm font-medium text-navy-800">Full name</label>
-          <input id="contactName" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+          <input id="contactName" name="name" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
         </div>
         <div>
           <label htmlFor="contactPhone" className="block text-sm font-medium text-navy-800">Phone</label>
-          <input id="contactPhone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+          <input id="contactPhone" name="phone" required type="tel" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="contactEmail" className="block text-sm font-medium text-navy-800">Email</label>
-          <input id="contactEmail" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+          <input id="contactEmail" name="email" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="contactSubject" className="block text-sm font-medium text-navy-800">Subject</label>
-          <select id="contactSubject" className="mt-1.5 w-full rounded-xl border border-mist-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-solar-500">
+          <select id="contactSubject" name="subject" className="mt-1.5 w-full rounded-xl border border-mist-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-solar-500">
             <option>General Enquiry</option>
             <option>Solar Installation</option>
             <option>Battery Storage</option>
@@ -61,12 +81,14 @@ export default function ContactForm() {
           <label htmlFor="contactMessage" className="block text-sm font-medium text-navy-800">Message</label>
           <textarea
             id="contactMessage"
+            name="message"
             required
             rows={5}
             className="mt-1.5 w-full resize-none rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
           />
         </div>
       </div>
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={submitting} size="lg" className="mt-6 w-full justify-center sm:w-auto" icon={<Send className="h-4 w-4" />}>
         {submitting ? "Sending..." : "Send Message"}
       </Button>
