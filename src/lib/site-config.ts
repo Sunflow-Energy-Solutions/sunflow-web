@@ -6,6 +6,7 @@ export const siteConfig = {
   phoneHref: "tel:+61390880322",
   email: "info@sunflowenergysolutions.com.au",
   abn: "ABN 27 460 874 669",
+  recNumber: "REC-38454",
   address: "Greater Melbourne & Victoria-wide",
   serviceAreas: [
     "Melbourne CBD",

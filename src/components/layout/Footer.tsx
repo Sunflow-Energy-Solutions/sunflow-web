@@ -129,7 +129,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <Container className="flex flex-col items-center justify-between gap-3 py-6 text-xs text-mist-500 sm:flex-row">
           <p>
-            &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved. {siteConfig.abn}
+            &copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved. {siteConfig.abn} &middot; {siteConfig.recNumber}
           </p>
           <div className="flex gap-5">
             <Link href="/contact" className="hover:text-solar-400">Privacy Policy</Link>
