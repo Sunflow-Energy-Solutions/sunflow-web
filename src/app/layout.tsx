@@ -7,6 +7,28 @@ import ChatWidget from "@/components/chat/ChatWidget";
 import CartDrawer from "@/components/shop/CartDrawer";
 import BackToTop from "@/components/ui/BackToTop";
 import { CartProvider } from "@/lib/cart-context";
+import { siteConfig } from "@/lib/site-config";
+
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "HomeAndConstructionBusiness",
+  name: siteConfig.name,
+  alternateName: siteConfig.shortName,
+  url: "https://www.sunflowenergysolutions.com.au",
+  logo: "https://www.sunflowenergysolutions.com.au/images/logo-transparent.png",
+  image: "https://www.sunflowenergysolutions.com.au/images/logo-transparent.png",
+  telephone: siteConfig.phoneHref.replace("tel:", ""),
+  email: siteConfig.email,
+  description:
+    "Solar panel, battery storage and EV charger installation for homes, businesses and government across Melbourne and Victoria.",
+  areaServed: siteConfig.serviceAreas.map((area) => ({ "@type": "City", name: area })),
+  address: {
+    "@type": "PostalAddress",
+    addressRegion: "VIC",
+    addressCountry: "AU",
+  },
+  sameAs: Object.values(siteConfig.social),
+};
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,6 +58,9 @@ export const metadata: Metadata = {
     "Sunflow Energy Solutions",
   ],
   metadataBase: new URL("https://www.sunflowenergysolutions.com.au"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Sunflow Energy Solutions | Solar, Battery & EV Charging",
     description:
@@ -58,6 +83,10 @@ export default function RootLayout({
       className={`${inter.variable} ${sora.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-navy-900">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <CartProvider>
           <a
             href="#main-content"
