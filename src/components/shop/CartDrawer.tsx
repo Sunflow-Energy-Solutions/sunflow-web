@@ -110,9 +110,9 @@ export default function CartDrawer() {
               <span>Subtotal</span>
               <span className="font-display text-lg font-bold text-navy-950">{formatPrice(subtotal)}</span>
             </div>
-            <p className="mt-1 text-xs text-mist-400">Shipping and installation quoted at checkout.</p>
+            <p className="mt-1 text-xs text-mist-400">No payment now — shipping and installation confirmed after we review your request.</p>
             <Button href="/ev-charging/checkout" size="lg" className="mt-4 w-full justify-center" onClick={closeCart}>
-              Checkout
+              Request Quote
             </Button>
           </div>
         )}

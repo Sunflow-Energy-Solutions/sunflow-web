@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, CreditCard, Lock, ShoppingBag, Trash2 } from "lucide-react";
+import { CheckCircle2, ShoppingBag, Trash2 } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { useCart } from "@/lib/cart-context";
@@ -11,7 +11,7 @@ function formatPrice(price: number) {
   return new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(price);
 }
 
-export default function CheckoutPage() {
+export default function QuoteRequestPage() {
   const { items, subtotal, removeItem, clearCart } = useCart();
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    // Frontend demo only — connect to CRM/email service at launch.
     window.setTimeout(() => {
       setSubmitting(false);
       setSubmitted(true);
@@ -35,10 +36,11 @@ export default function CheckoutPage() {
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-solar-500/15 text-solar-600">
           <CheckCircle2 className="h-8 w-8" />
         </div>
-        <h1 className="mt-6 font-display text-3xl font-bold text-navy-950">Order received!</h1>
+        <h1 className="mt-6 font-display text-3xl font-bold text-navy-950">Quote request received!</h1>
         <p className="mt-3 max-w-md text-mist-500">
-          Thank you for your order. A Sunflow team member will contact you within one
-          business day to confirm your order and arrange professional installation.
+          Thank you for your request. A Sunflow team member will contact you within one
+          business day to confirm final pricing and arrange professional installation.
+          No payment has been taken.
         </p>
         <Button href="/ev-charging/shop" size="lg" className="mt-8">
           Continue Shopping
@@ -62,8 +64,8 @@ export default function CheckoutPage() {
 
   return (
     <Container className="py-14 sm:py-20">
-      <h1 className="font-display text-3xl font-bold text-navy-950 sm:text-4xl">Checkout</h1>
-      <p className="mt-2 text-mist-500">Complete your details below. Our team will confirm installation scheduling after your order.</p>
+      <h1 className="font-display text-3xl font-bold text-navy-950 sm:text-4xl">Request a Quote</h1>
+      <p className="mt-2 text-mist-500">Complete your details below and our team will confirm final pricing and installation scheduling. No payment is required now.</p>
 
       <form onSubmit={handleSubmit} className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-8">
@@ -114,34 +116,21 @@ export default function CheckoutPage() {
           </fieldset>
 
           <fieldset className="rounded-2xl border border-mist-200 p-6">
-            <legend className="flex items-center gap-2 px-2 font-display font-semibold text-navy-950">
-              <CreditCard className="h-4.5 w-4.5" /> Payment Details
-            </legend>
-            <div className="grid grid-cols-1 gap-5">
-              <div>
-                <label htmlFor="cardNumber" className="block text-sm font-medium text-navy-800">Card number</label>
-                <input id="cardNumber" required type="text" placeholder="•••• •••• •••• ••••" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
-              </div>
-              <div className="grid grid-cols-2 gap-5">
-                <div>
-                  <label htmlFor="expiry" className="block text-sm font-medium text-navy-800">Expiry</label>
-                  <input id="expiry" required type="text" placeholder="MM/YY" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
-                </div>
-                <div>
-                  <label htmlFor="cvc" className="block text-sm font-medium text-navy-800">CVC</label>
-                  <input id="cvc" required type="text" placeholder="•••" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
-                </div>
-              </div>
-              <p className="flex items-center gap-2 text-xs text-mist-400">
-                <Lock className="h-3.5 w-3.5" />
-                This is a demo checkout — no payment is processed. Live payments will be enabled via Stripe at launch.
-              </p>
+            <legend className="px-2 font-display font-semibold text-navy-950">Notes (optional)</legend>
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium text-navy-800">Anything else we should know?</label>
+              <textarea
+                id="notes"
+                rows={4}
+                placeholder="e.g. preferred install date, existing solar/battery setup, access notes"
+                className="mt-1.5 w-full resize-none rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
+              />
             </div>
           </fieldset>
         </div>
 
         <div className="h-fit rounded-2xl border border-mist-200 bg-mist-50 p-6">
-          <h2 className="font-display font-semibold text-navy-950">Order Summary</h2>
+          <h2 className="font-display font-semibold text-navy-950">Quote Summary</h2>
           <ul className="mt-5 space-y-4">
             {items.map(({ product, quantity }) => (
               <li key={product.id} className="flex items-start justify-between gap-3 text-sm">
@@ -173,12 +162,16 @@ export default function CheckoutPage() {
               <span>{formatPrice(gst)}</span>
             </div>
             <div className="flex justify-between font-display text-lg font-bold text-navy-950">
-              <span>Total</span>
+              <span>Estimated Total</span>
               <span>{formatPrice(total)}</span>
             </div>
           </div>
-          <Button type="submit" disabled={submitting} size="lg" className="mt-6 w-full justify-center">
-            {submitting ? "Placing order..." : "Place Order"}
+          <p className="mt-4 text-xs text-mist-400">
+            Estimate only — no payment is taken now. Final pricing is confirmed once we&apos;ve
+            reviewed your installation address.
+          </p>
+          <Button type="submit" disabled={submitting} size="lg" className="mt-4 w-full justify-center">
+            {submitting ? "Submitting..." : "Submit Quote Request"}
           </Button>
           <p className="mt-4 text-center text-xs text-mist-400">
             <Link href="/ev-charging/shop" className="underline hover:text-navy-700">
