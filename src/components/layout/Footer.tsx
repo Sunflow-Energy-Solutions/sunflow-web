@@ -7,14 +7,12 @@ import {
   FacebookIcon,
   InstagramIcon,
   LinkedinIcon,
-  TikTokIcon,
   YoutubeIcon,
 } from "@/components/icons/BrandIcons";
 
 const socials = [
   { label: "Facebook", href: siteConfig.social.facebook, Icon: FacebookIcon },
   { label: "Instagram", href: siteConfig.social.instagram, Icon: InstagramIcon },
-  { label: "TikTok", href: siteConfig.social.tiktok, Icon: TikTokIcon },
   { label: "LinkedIn", href: siteConfig.social.linkedin, Icon: LinkedinIcon },
   { label: "YouTube", href: siteConfig.social.youtube, Icon: YoutubeIcon },
 ];

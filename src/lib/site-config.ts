@@ -19,11 +19,10 @@ export const siteConfig = {
     "Regional Victoria",
   ],
   social: {
-    facebook: "https://facebook.com/sunflowenergy",
-    instagram: "https://instagram.com/sunflowenergy",
-    tiktok: "https://tiktok.com/@sunflowenergy",
-    linkedin: "https://linkedin.com/company/sunflowenergy",
-    youtube: "https://youtube.com/@sunflowenergy",
+    facebook: "https://www.facebook.com/profile.php?id=61594741628104",
+    instagram: "https://www.instagram.com/sunflowenergysolutions/",
+    linkedin: "https://www.linkedin.com/company/sunflow-energy-solutions-pty-ltd/",
+    youtube: "https://www.youtube.com/channel/UCMf-rpJ8ON0wR_28RPWHNOg",
   },
 } as const;
 
