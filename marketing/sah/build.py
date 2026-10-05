@@ -116,21 +116,21 @@ FUND_DATES = {"en": "1 July 2026", "vi": "01/07/2026"}
 
 CSS = """
 @page { size: A4; margin: 0 }
-:root { --navy:#12355B; --teal:#1B8A8F; --gold:#E8A33D; --ink:#243447; --mute:#5B6B7B; --tint:#F2F7F8; --rule:#D9E3E8; --coral:#B5524C; --coral-tint:#FBF3F2; }
+:root { --navy:#163D70; --teal:#3F9A97; --teal-l:#68B9B6; --gold:#68B9B6; --ink:#243447; --mute:#5B6B7B; --tint:#F2F7F8; --rule:#D9E3E8; --coral:#B5524C; --coral-tint:#FBF3F2; }
 * { box-sizing:border-box; margin:0; padding:0 }
 body { font-family:'Liberation Sans','DejaVu Sans',Arial,sans-serif; color:var(--ink); font-size:10.2pt; line-height:1.45; -webkit-print-color-adjust:exact; print-color-adjust:exact }
 .page { width:210mm; height:297mm; position:relative; overflow:hidden; page-break-after:always; background:#fff }
 .page:last-child { page-break-after:auto }
-.hdr { background:var(--navy); color:#fff; padding:8mm 15mm 7mm; position:relative }
-.hdr::after { content:''; position:absolute; left:0; right:0; bottom:0; height:2.2mm; background:linear-gradient(90deg,var(--teal) 0 60%,var(--gold) 60% 100%) }
-.hdr .logo { height:11mm; color:#fff; display:block; margin-bottom:4mm }
-.hdr .tag { font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:1.5mm }
+.hdr { background:#fff; color:var(--navy); padding:9mm 15mm 7mm; position:relative }
+.hdr::after { content:''; position:absolute; left:0; right:0; bottom:0; height:2.2mm; background:linear-gradient(90deg,var(--navy) 0 60%,var(--teal-l) 60% 100%) }
+.hdr .logo { height:24mm; display:block; margin-bottom:5mm }
+.hdr .tag { font-size:9pt; letter-spacing:.14em; text-transform:uppercase; color:var(--teal); font-weight:700; margin-bottom:1.5mm }
 .hdr h1 { font-size:21pt; line-height:1.15; font-weight:700 }
-.hdr p.sub { margin-top:2mm; font-size:11pt; color:#CFE0EA }
-.mini { background:var(--navy); color:#fff; padding:6mm 15mm; display:flex; justify-content:space-between; align-items:center; position:relative }
-.mini::after { content:''; position:absolute; left:0; right:0; bottom:0; height:1.6mm; background:linear-gradient(90deg,var(--teal) 0 60%,var(--gold) 60% 100%) }
-.mini .logo { height:8mm; color:#fff }
-.mini .t { font-size:9pt; color:#CFE0EA; letter-spacing:.05em }
+.hdr p.sub { margin-top:2mm; font-size:11pt; color:var(--mute) }
+.mini { background:#fff; color:var(--navy); padding:6mm 15mm; display:flex; justify-content:space-between; align-items:center; position:relative }
+.mini::after { content:''; position:absolute; left:0; right:0; bottom:0; height:1.6mm; background:linear-gradient(90deg,var(--navy) 0 60%,var(--teal-l) 60% 100%) }
+.mini .logo { height:13mm }
+.mini .t { font-size:9pt; color:var(--teal); font-weight:700; letter-spacing:.05em }
 .body { padding:6mm 15mm 0 }
 h2 { font-size:15pt; color:var(--navy); margin-bottom:1.5mm; display:flex; align-items:center; gap:2.5mm }
 h2 .dot { width:7mm; height:7mm; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:11pt; font-weight:700; flex:none }
@@ -144,11 +144,11 @@ p.lead { color:var(--mute); margin-bottom:3mm; font-size:9.6pt }
 .card .n { color:var(--teal); font-weight:700; margin-right:1.5mm }
 .grid.no .card { border-left-color:var(--coral); background:var(--coral-tint) }
 .grid.no .card .n { color:var(--coral) }
-.callout { margin-top:5mm; border:.3mm solid var(--gold); background:#FFF8EC; border-radius:1.5mm; padding:4mm 5mm }
+.callout { margin-top:5mm; border:.3mm solid var(--teal-l); background:#EFF8F8; border-radius:1.5mm; padding:4mm 5mm }
 .callout h3 { color:var(--navy); font-size:11.5pt; margin-bottom:1mm }
 .callout ul { margin:1.5mm 0 0 4.5mm } .callout li { margin-bottom:.8mm }
 .flex { margin-top:5mm; padding:4.5mm 5.5mm; background:var(--navy); color:#fff; border-radius:1.5mm }
-.flex h2 { color:#fff; font-size:13pt } .flex p { color:#DCE8F0 }
+.flex h2 { color:#fff; font-size:13pt } .flex p { color:#E3EEF6 }
 .tables { display:grid; grid-template-columns:1fr 1fr; gap:6mm; margin-top:4mm; align-items:start }
 .tables h3 { font-size:11pt; color:var(--navy); margin-bottom:2mm }
 table { width:100%; border-collapse:collapse; font-size:9pt }
@@ -158,14 +158,16 @@ tr:nth-child(even) td { background:var(--tint) }
 td.num, th.num { text-align:right; white-space:nowrap }
 td.lv { font-weight:700; color:var(--navy) }
 .note { margin-top:5mm; font-size:8.8pt; color:var(--mute) }
-.manual { margin-top:4mm; padding:3.5mm 5mm; border-left:1.4mm solid var(--gold); background:var(--tint); font-size:9.6pt }
+.manual { margin-top:4mm; padding:3.5mm 5mm; border-left:1.4mm solid var(--teal-l); background:var(--tint); font-size:9.6pt }
 .ftr { position:absolute; left:0; right:0; bottom:0; padding:0 15mm 7mm }
 .ftr .partner { border-top:.3mm solid var(--rule); padding-top:3mm; font-size:9pt; color:var(--ink) }
 .ftr .row { display:flex; justify-content:space-between; margin-top:2mm; font-size:8pt; color:var(--mute) }
 """
 
 def logo(cls):
-    return (HERE / "assets" / "logo.svg").read_text().replace("<svg ", f'<svg class="{cls}" ', 1)
+    import base64
+    data = base64.b64encode((HERE / "assets" / "logo.png").read_bytes()).decode()
+    return f'<img class="{cls}" src="data:image/png;base64,{data}" alt="Integral Aged Care Management">'
 
 def cards(items, cls=""):
     out = "".join(f'<div class="card"><h3><span class="n">{i}.</span>{h}</h3><p>{p}</p></div>' for i, (h, p) in enumerate(items, 1))
