@@ -8,6 +8,7 @@ import { Menu, X, ChevronDown, ShoppingCart, Phone } from "lucide-react";
 import clsx from "clsx";
 import { navLinks, siteConfig } from "@/lib/site-config";
 import Button from "@/components/ui/Button";
+import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 import { useCart } from "@/lib/cart-context";
 
 export default function Navbar() {
@@ -100,7 +101,8 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
+          <LanguageSwitcher />
           <button
             type="button"
             onClick={openCart}

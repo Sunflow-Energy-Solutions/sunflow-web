@@ -155,3 +155,20 @@ html {
   background: var(--color-navy-500);
   border-radius: 999px;
 }
+
+/* Hide Google Translate's injected banner and tooltips; the site has its own language picker. */
+body {
+  top: 0 !important;
+}
+.goog-te-banner-frame,
+iframe.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf {
+  display: none !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
