@@ -1,9 +1,6 @@
 import { Resend } from "resend";
 
-// Sending as our own domain to our own Microsoft 365 mailbox gets filtered as spoofing
-// (DMARC p=quarantine), so notifications go out from Resend's address until the tenant
-// has an allow rule for it.
-export const NOTIFICATION_FROM = "Sunflow Website <onboarding@resend.dev>";
+export const NOTIFICATION_FROM = "Sunflow Website <no-reply@sunflowenergysolutions.com.au>";
 export const NOTIFICATION_TO = "admin@sunflowenergysolutions.com.au";
 
 let client: Resend | null = null;
