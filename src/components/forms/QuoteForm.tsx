@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, FileUp, Send, X } from "lucide-react";
 import Button from "@/components/ui/Button";
+import AddressAutocomplete from "@/components/forms/AddressAutocomplete";
 
 const serviceOptions = [
   "Residential Solar",
@@ -116,8 +117,14 @@ export default function QuoteForm() {
             <input id="quoteEmail" name="email" required type="email" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
           </div>
           <div className="sm:col-span-2">
-            <label htmlFor="quoteAddress" className="block text-sm font-medium text-navy-800">Property address</label>
-            <input id="quoteAddress" name="address" required type="text" placeholder="Street, suburb, postcode" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+            <AddressAutocomplete
+              id="quoteAddress"
+              name="address"
+              label="Property address"
+              required
+              placeholder="Start typing your address"
+              className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
+            />
           </div>
         </div>
       </fieldset>

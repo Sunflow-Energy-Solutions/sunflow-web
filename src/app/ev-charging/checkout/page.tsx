@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, ShoppingBag, Trash2 } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
+import AddressAutocomplete, { type AddressParts } from "@/components/forms/AddressAutocomplete";
 import { useCart } from "@/lib/cart-context";
 
 function formatPrice(price: number) {
@@ -16,6 +17,15 @@ export default function QuoteRequestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suburb, setSuburb] = useState("");
+  const [stateCode, setStateCode] = useState("VIC");
+  const [postcode, setPostcode] = useState("");
+
+  function fillAddress(parts: AddressParts) {
+    setSuburb(parts.suburb);
+    if (parts.state) setStateCode(parts.state);
+    setPostcode(parts.postcode);
+  }
 
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
@@ -121,21 +131,29 @@ export default function QuoteRequestPage() {
             <legend className="px-2 font-display font-semibold text-navy-950">Installation Address</legend>
             <div className="grid grid-cols-1 gap-5">
               <div>
-                <label htmlFor="street" className="block text-sm font-medium text-navy-800">Street address</label>
-                <input id="street" name="street" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                <AddressAutocomplete
+                  id="street"
+                  name="street"
+                  label="Street address"
+                  required
+                  mode="street"
+                  placeholder="Start typing your address"
+                  onSelect={fillAddress}
+                  className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
+                />
               </div>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
                 <div>
                   <label htmlFor="suburb" className="block text-sm font-medium text-navy-800">Suburb</label>
-                  <input id="suburb" name="suburb" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="suburb" name="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)} required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
                 <div>
                   <label htmlFor="state" className="block text-sm font-medium text-navy-800">State</label>
-                  <input id="state" name="state" defaultValue="VIC" required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="state" name="state" value={stateCode} onChange={(e) => setStateCode(e.target.value)} required type="text" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
                 <div>
                   <label htmlFor="postcode" className="block text-sm font-medium text-navy-800">Postcode</label>
-                  <input id="postcode" name="postcode" required type="text" inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
+                  <input id="postcode" name="postcode" value={postcode} onChange={(e) => setPostcode(e.target.value)} required type="text" inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500" />
                 </div>
               </div>
             </div>
