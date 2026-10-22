@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getResend, NOTIFICATION_FROM, NOTIFICATION_TO } from "@/lib/resend";
+import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024; // stay under Vercel's serverless request body limit
@@ -40,9 +40,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await getResend().emails.send({
-      from: NOTIFICATION_FROM,
-      to: NOTIFICATION_TO,
+    await sendNotification({
       replyTo: email,
       subject: `New quote request from ${name}`,
       html: renderEmailRows([

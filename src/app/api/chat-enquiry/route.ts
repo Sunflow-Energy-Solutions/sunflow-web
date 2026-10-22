@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getResend, NOTIFICATION_FROM, NOTIFICATION_TO } from "@/lib/resend";
+import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
 
 function clean(value: unknown, max: number): string {
@@ -33,9 +33,7 @@ export async function POST(request: Request) {
     : "";
 
   try {
-    await getResend().emails.send({
-      from: NOTIFICATION_FROM,
-      to: NOTIFICATION_TO,
+    await sendNotification({
       replyTo: cleanEmail || undefined,
       subject: `New chat enquiry from ${cleanName}`,
       html: renderEmailRows([

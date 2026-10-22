@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getResend, NOTIFICATION_FROM, NOTIFICATION_TO } from "@/lib/resend";
+import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
 
 export async function POST(request: Request) {
@@ -38,9 +38,7 @@ export async function POST(request: Request) {
     : "";
 
   try {
-    await getResend().emails.send({
-      from: NOTIFICATION_FROM,
-      to: NOTIFICATION_TO,
+    await sendNotification({
       replyTo: email,
       subject: `New EV charger quote request from ${firstName} ${lastName}`,
       html: renderEmailRows([
