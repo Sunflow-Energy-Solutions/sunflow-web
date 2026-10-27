@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# offline staff tools (own dependencies)
+/offline-tools/*/node_modules
