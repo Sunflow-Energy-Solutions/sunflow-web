@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src"]
+  "include": ["src", "scripts/*.d.ts"]
 }

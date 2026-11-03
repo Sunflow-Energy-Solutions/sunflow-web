@@ -111,3 +111,32 @@ export interface ScenarioDetail extends ScenarioResult {
     solarAdded: number[];
   };
 }
+
+/** A priced system from the Sunflow package price list (customer-facing figures only). */
+export interface SystemPackage {
+  id: string;
+  brand: string;
+  kind: "solar+battery" | "battery";
+  name: string;
+  /** New panels in the package, kW (0 for battery-only) */
+  solarKw: number;
+  batteryKwh: number;
+  inverter: string;
+  phase: "Single" | "Three" | "";
+  battery: string;
+  panels: string;
+  /** Total price inc GST before rebates, $ */
+  price: number;
+  /** Government STC rebate, $ */
+  rebate: number;
+  /** What the customer pays inc GST after the rebate, $ */
+  youPay: number;
+}
+
+export interface SystemFilters {
+  /** Brands to include; empty means all */
+  brands: string[];
+  phase: "Single" | "Three" | "Any";
+  includeBattery: boolean;
+  includeSolarBattery: boolean;
+}

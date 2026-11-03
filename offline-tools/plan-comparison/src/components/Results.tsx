@@ -1,10 +1,12 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { Battery, ClipboardCopy, Sun, Trophy, Zap, CircleOff } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Battery, Check, ClipboardCopy, Download, ExternalLink, Sun, Zap, CircleOff, Loader2 } from "lucide-react";
 import clsx from "clsx";
-import { PERIOD_DAYS, costDay, evaluateDetail, runCube, type Period } from "@/lib/energy/engine";
-import type { Assumptions, DayProfile, Plan, ScenarioResult, SizeOption } from "@/lib/energy/types";
+import { PERIOD_DAYS, evaluateDetail, type Period } from "@/lib/energy/engine";
+import { resultKey, scorePackages, pickStandouts, type PackageOutcome, type Pick } from "@/lib/energy/analysis";
+import type { Assumptions, DayProfile, Plan, ScenarioResult, SystemPackage } from "@/lib/energy/types";
+import { runJobs, type Job } from "@/lib/engineClient";
+import { buildReportHtml, type ReportData, type ReportOption } from "@/lib/report";
+import { PRICE_LIST_DATE } from "@/lib/energy/catalogue.generated";
 import DayChart from "./DayChart";
 import { Card, money, num } from "./ui";
 
@@ -15,139 +17,221 @@ const PERIODS: { id: Period; label: string; noun: string }[] = [
   { id: "year", label: "Year", noun: "per year" },
 ];
 
-const planName = (p: Plan) => (p.id === "current" ? `${p.retailer} ${p.name} (current)` : `${p.retailer} ${p.name}`);
+const MONTH = PERIOD_DAYS.month;
 
-function hardwareLabel(battery: number, solar: number) {
+const planShort = (p: Plan) => (/^unknown/i.test(p.retailer) ? p.name : `${p.retailer} ${p.name}`);
+const planName = (p: Plan) => (p.id === "current" ? `${planShort(p)} (current)` : planShort(p));
+
+function inverterLabel(p: SystemPackage) {
+  const m = p.inverter.match(/(\d+(?:\.\d+)?)\s*kW/i);
+  return m ? `${m[1]} kW inverter` : "";
+}
+
+function systemTitle(p: SystemPackage) {
   const parts = [];
-  if (battery > 0) parts.push(`${num(battery, 1)} kWh battery`);
-  if (solar > 0) parts.push(`${num(solar, 1)} kW extra solar`);
-  return parts.length ? parts.join(" + ") : "No new hardware";
+  if (p.solarKw > 0) parts.push(`${num(p.solarKw, 2)} kW solar`);
+  parts.push(`${num(p.batteryKwh, 1)} kWh battery`);
+  return parts.join(" + ");
 }
 
-function sizeList(opts: SizeOption[]) {
-  return Array.from(new Set([0, ...opts.map((o) => o.size).filter((s) => s > 0)])).sort((a, b) => a - b);
-}
-
-interface Pick {
-  row: ScenarioResult;
-  plan: Plan;
-  saving: number; // $/day vs today
-  hwSaving: number; // $/day vs the same plan without new hardware
-  price: number | null;
-  max: { row: ScenarioResult; plan: Plan; saving: number } | null;
-}
+type SortKey = "payback" | "saving" | "price" | "tenYear";
 
 export default function Results({
   customer,
   plans,
   base,
-  batteries,
-  solars,
+  packages,
   assumptions,
+  usagePerDay,
+  exportPerDay,
 }: {
   customer: string;
   plans: Plan[];
   base: DayProfile;
-  batteries: SizeOption[];
-  solars: SizeOption[];
+  packages: SystemPackage[];
   assumptions: Assumptions;
+  usagePerDay: number;
+  exportPerDay: number;
 }) {
   const [period, setPeriod] = useState<Period>("month");
-  const [curvePlanId, setCurvePlanId] = useState<string | null>(null);
-  const [curveSolar, setCurveSolar] = useState(0);
-  const [selected, setSelected] = useState<{ planId: string; battery: number; solar: number } | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("payback");
+  const [showAll, setShowAll] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reportIds, setReportIds] = useState<string[] | null>(null); // null = use the automatic picks
+  const [copied, setCopied] = useState(false);
 
-  const batterySizes = useMemo(() => sizeList(batteries), [batteries]);
-  const solarSizes = useMemo(() => sizeList(solars), [solars]);
   const scale = PERIOD_DAYS[period];
   const noun = PERIODS.find((p) => p.id === period)!.noun;
-
-  const cube = useMemo(
-    () => runCube(plans, base, batterySizes, solarSizes, assumptions),
-    [plans, base, batterySizes, solarSizes, assumptions]
-  );
-
-  const get = (planId: string, battery: number, solar: number) =>
-    cube.find((r) => r.planId === planId && r.batteryKwh === battery && r.solarKw === solar)!;
-  const planById = (id: string) => plans.find((p) => p.id === id)!;
   const current = plans[0];
-  const today = get(current.id, 0, 0).cost.total;
 
-  const priceOf = (battery: number, solar: number) => {
-    const b = battery > 0 ? batteries.find((o) => o.size === battery)?.price ?? null : 0;
-    const s = solar > 0 ? solars.find((o) => o.size === solar)?.price ?? null : 0;
-    return b == null || s == null ? null : b + s;
-  };
+  /* ---- Scenario results: cached per (usage, plans, assumptions) and computed in background workers ---- */
+  const inputsKey = useMemo(() => JSON.stringify([base, assumptions, plans]), [base, assumptions, plans]);
+  const cache = useRef<{ key: string; map: Map<string, ScenarioResult> }>({ key: "", map: new Map() });
+  const [version, setVersion] = useState(0);
+  const [progress, setProgress] = useState<number | null>(null);
+  const runId = useRef(0);
 
-  /* Plan comparison with no new hardware */
-  const planRows = plans
-    .map((p) => ({ plan: p, r: get(p.id, 0, 0) }))
-    .sort((a, b) => a.r.cost.total - b.r.cost.total);
-  const worstPlan = Math.max(...planRows.map((x) => Math.abs(x.r.cost.total)), 0.01);
+  useEffect(() => {
+    if (cache.current.key !== inputsKey) cache.current = { key: inputsKey, map: new Map() };
+    const store = cache.current.map;
+    const pairs = new Map<string, { battery: number; solar: number }>();
+    pairs.set("0|0", { battery: 0, solar: 0 });
+    for (const p of packages) pairs.set(`${p.batteryKwh}|${p.solarKw}`, { battery: p.batteryKwh, solar: p.solarKw });
+    const jobs: Job[] = [];
+    plans.forEach((plan, planIndex) => {
+      for (const { battery, solar } of pairs.values()) {
+        if (!store.has(resultKey(plan.id, battery, solar))) jobs.push({ planIndex, battery, solar });
+      }
+    });
+    if (jobs.length === 0) {
+      setProgress(null);
+      return;
+    }
+    const mine = ++runId.current;
+    setProgress(0);
+    // Small delay so the progress bar paints before heavy work starts.
+    const t = setTimeout(() => {
+      runJobs(plans, base, assumptions, jobs, (f) => {
+        if (mine === runId.current) setProgress(f);
+      }).then((out) => {
+        if (mine !== runId.current) return;
+        for (const { job, result } of out) store.set(resultKey(plans[job.planIndex].id, job.battery, job.solar), result);
+        setProgress(null);
+        setVersion((v) => v + 1);
+      });
+    }, 30);
+    return () => clearTimeout(t);
+  }, [inputsKey, packages, plans, base, assumptions]);
 
-  /* Recommendation per category */
-  const pickFor = (match: (r: ScenarioResult) => boolean): Pick | null => {
-    const rows = cube.filter(match);
-    if (rows.length === 0) return null;
-    const withSaving = rows.map((row) => ({ row, saving: today - row.cost.total }));
-    const best = withSaving.reduce((a, b) => (b.saving > a.saving ? b : a));
-    if (best.saving <= 0.005) return null;
-    const allPriced = withSaving.every((x) => priceOf(x.row.batteryKwh, x.row.solarKw) != null);
-    const cost = (x: { row: ScenarioResult }) =>
-      allPriced ? priceOf(x.row.batteryKwh, x.row.solarKw)! : x.row.batteryKwh * 100 + x.row.solarKw * 100;
-    const good = withSaving.filter((x) => x.saving >= best.saving * 0.9);
-    const chosen = good.reduce((a, b) => (cost(b) < cost(a) || (cost(b) === cost(a) && b.saving > a.saving) ? b : a));
-    const noHw = get(chosen.row.planId, 0, 0).cost.total;
+  const lookup = (planId: string, battery: number, solar: number) => cache.current.map.get(resultKey(planId, battery, solar));
+  const ready = progress === null && plans.every((p) => lookup(p.id, 0, 0));
+
+  const scored = useMemo(() => {
+    if (!ready) return null;
+    return scorePackages(packages, plans, lookup);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, version, packages, plans]);
+
+  const groups = useMemo(() => {
+    if (!scored) return null;
+    const battery = scored.outcomes.filter((o) => o.pkg.kind === "battery");
+    const combo = scored.outcomes.filter((o) => o.pkg.kind === "solar+battery");
+    return { battery: pickStandouts(battery), combo: pickStandouts(combo) };
+  }, [scored]);
+
+  const planById = (id: string) => plans.find((p) => p.id === id) ?? current;
+
+  const autoIds = useMemo(() => {
+    if (!groups) return [] as string[];
+    const ids = [...groups.battery.slice(0, 2), ...groups.combo.slice(0, 2)].map((p) => p.outcome.pkg.id);
+    return Array.from(new Set(ids));
+  }, [groups]);
+  const activeReportIds = reportIds ?? autoIds;
+  const toggleReport = (id: string) => setReportIds((cur) => {
+    const list = cur ?? autoIds;
+    return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+  });
+
+  const sortedOutcomes = useMemo(() => {
+    if (!scored) return [];
+    const arr = scored.outcomes.filter((o) => o.hwSavingDay > 0);
+    const score: Record<SortKey, (o: PackageOutcome) => number> = {
+      payback: (o) => o.paybackYears ?? Infinity,
+      saving: (o) => -o.savingDay,
+      price: (o) => o.pkg.youPay,
+      tenYear: (o) => -o.tenYearNet,
+    };
+    return arr.sort((a, b) => score[sortKey](a) - score[sortKey](b));
+  }, [scored, sortKey]);
+
+  const firstPick = groups ? [...groups.combo, ...groups.battery][0]?.outcome : undefined;
+  const selected = scored?.outcomes.find((o) => o.pkg.id === selectedId) ?? firstPick ?? null;
+  const detail = selected
+    ? evaluateDetail(planById(selected.planId), base, selected.pkg.batteryKwh, selected.pkg.solarKw, assumptions)
+    : null;
+
+  /* ---- Report ---- */
+  const optionFor = (o: PackageOutcome, reasons: string[]): ReportOption => {
+    const plan = planById(o.planId);
     return {
-      row: chosen.row,
-      plan: planById(chosen.row.planId),
-      saving: chosen.saving,
-      hwSaving: noHw - chosen.row.cost.total,
-      price: priceOf(chosen.row.batteryKwh, chosen.row.solarKw),
-      max: { row: best.row, plan: planById(best.row.planId), saving: best.saving },
+      title: systemTitle(o.pkg),
+      brand: [o.pkg.brand, inverterLabel(o.pkg)].filter(Boolean).join(" · "),
+      tags: reasons,
+      includes: [o.pkg.panels && `Solar panels: ${o.pkg.panels}`, o.pkg.inverter && `Inverter: ${o.pkg.inverter}`, o.pkg.battery && `Battery: ${o.pkg.battery}`].filter(Boolean) as string[],
+      planLabel: planShort(plan),
+      needsPlanSwitch: plan.id !== current.id,
+      billBeforeMonth: o.todayDay * MONTH,
+      billAfterMonth: o.newDay * MONTH,
+      savingMonth: o.savingDay * MONTH,
+      savingYear: o.savingDay * 365,
+      price: o.pkg.price,
+      rebate: o.pkg.rebate,
+      youPay: o.pkg.youPay,
+      paybackYears: o.paybackYears,
+      tenYearNet: o.tenYearNet,
     };
   };
 
-  const picks = {
-    plan: (() => {
-      const best = planRows[0];
-      return best.plan.id === current.id || today - best.r.cost.total <= 0.005
-        ? null
-        : { row: best.r, plan: best.plan, saving: today - best.r.cost.total, hwSaving: 0, price: 0, max: null };
-    })(),
-    battery: pickFor((r) => r.batteryKwh > 0 && r.solarKw === 0),
-    solar: pickFor((r) => r.batteryKwh === 0 && r.solarKw > 0),
-    both: pickFor((r) => r.batteryKwh > 0 && r.solarKw > 0),
-  } satisfies Record<string, Pick | null>;
-
-  const best = [picks.both, picks.battery, picks.solar, picks.plan]
-    .filter((p): p is Pick => !!p)
-    .reduce<Pick | null>((a, b) => (!a || b.saving > a.saving ? b : a), null);
-
-  const sel = selected ?? (best ? { planId: best.row.planId, battery: best.row.batteryKwh, solar: best.row.solarKw } : { planId: current.id, battery: 0, solar: 0 });
-  const selPlan = plans.find((p) => p.id === sel.planId) ?? current;
-  const selDetail = evaluateDetail(selPlan, base, sel.battery, sel.solar, assumptions);
-  const selBase = costDay(selPlan, base.D, base.X);
-
-  const curvePlan = plans.find((p) => p.id === (curvePlanId ?? best?.row.planId ?? current.id)) ?? current;
-  const curveRows = batterySizes.map((b) => get(curvePlan.id, b, curveSolar));
-  const curveNoBattery = get(curvePlan.id, 0, curveSolar).cost.total;
-  const maxCurveSaving = Math.max(0.01, ...curveRows.map((r) => curveNoBattery - r.cost.total));
-
-  const copySummary = () => {
-    const lines = [`Electricity plan & hardware comparison${customer ? ` - ${customer}` : ""}`, `Today: ${money(today * scale)} ${noun} on ${planName(current)}`, ""];
-    const add = (title: string, p: Pick | null) => {
-      if (!p) return;
-      lines.push(
-        `${title}: ${planName(p.plan)}, ${hardwareLabel(p.row.batteryKwh, p.row.solarKw)} - ${money(p.row.cost.total * scale)} ${noun}, saving ${money(p.saving * scale)} ${noun} (${money(p.saving * 365)}/year)` +
-          (p.price != null && p.price > 0 && p.hwSaving > 0 ? `, hardware payback about ${num(p.price / (p.hwSaving * 365), 1)} years` : "")
-      );
+  const buildReport = () => {
+    if (!scored || !groups) return "";
+    const allPicks = [...groups.battery, ...groups.combo];
+    const options = activeReportIds
+      .map((id) => scored.outcomes.find((o) => o.pkg.id === id))
+      .filter((o): o is PackageOutcome => !!o)
+      .map((o) => optionFor(o, allPicks.find((p) => p.outcome.pkg.id === o.pkg.id)?.reasons ?? []));
+    const sw = scored.bestNoHardware;
+    const data: ReportData = {
+      customer,
+      dateLabel: new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }),
+      currentPlanLabel: planShort(current),
+      billMonth: scored.todayDay * MONTH,
+      usagePerDay,
+      exportPerDay,
+      planSwitch:
+        sw.plan.id !== current.id && scored.todayDay - sw.day > 0.005
+          ? { planLabel: planShort(sw.plan), billMonth: sw.day * MONTH, savingMonth: (scored.todayDay - sw.day) * MONTH }
+          : null,
+      options,
+      priceListDate: new Date(PRICE_LIST_DATE).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }),
+      contact: {
+        name: "Sunflow Energy Solutions",
+        phone: "(03) 9088 0322",
+        email: "info@sunflowenergysolutions.com.au",
+        abn: "ABN 27 460 874 669",
+        rec: "REC-38454",
+      },
     };
-    add("Switch plan only", picks.plan);
-    add("Battery", picks.battery);
-    add("Extra solar", picks.solar);
-    add("Solar + battery", picks.both);
+    return buildReportHtml(data);
+  };
+
+  const downloadReport = () => {
+    const html = buildReport();
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = document.createElement("a");
+    a.href = url;
+    const safe = (customer || "customer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+    a.download = `Sunflow-savings-options-${safe}-${new Date().toISOString().slice(0, 10)}.html`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+  const previewReport = () => {
+    const url = URL.createObjectURL(new Blob([buildReport()], { type: "text/html" }));
+    window.open(url, "_blank");
+  };
+  const copySummary = () => {
+    if (!scored) return;
+    const lines = [`Energy savings options${customer ? ` - ${customer}` : ""}`, `Today: ${money(scored.todayDay * MONTH)} a month on ${planShort(current)}`, ""];
+    for (const id of activeReportIds) {
+      const o = scored.outcomes.find((x) => x.pkg.id === id);
+      if (!o) continue;
+      lines.push(
+        `${o.pkg.brand} ${systemTitle(o.pkg)} on ${planShort(planById(o.planId))}: ${money(o.newDay * MONTH)} a month, saves ${money(o.savingDay * MONTH)} a month. You pay ${money(o.pkg.youPay)} after rebates` +
+          (o.paybackYears != null ? `, pays for itself in ${o.paybackYears.toFixed(1)} years.` : ".")
+      );
+    }
     void navigator.clipboard?.writeText(lines.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const periodToggle = (
@@ -158,7 +242,7 @@ export default function Results({
           type="button"
           onClick={() => setPeriod(p.id)}
           className={clsx(
-            "cursor-pointer rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors",
+            "cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
             period === p.id ? "bg-navy-900 text-white" : "text-navy-700 hover:bg-mist-100"
           )}
         >
@@ -168,46 +252,188 @@ export default function Results({
     </div>
   );
 
+  if (!scored || !groups) {
+    return (
+      <Card>
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <Loader2 className="h-6 w-6 animate-spin text-solar-600" />
+          <p className="font-semibold text-navy-900">Pricing every system on every plan...</p>
+          <div className="h-2 w-64 max-w-full rounded-full bg-mist-100">
+            <div className="h-2 rounded-full bg-solar-500 transition-all" style={{ width: `${Math.round((progress ?? 0) * 100)}%` }} />
+          </div>
+          <p className="text-sm text-mist-500">
+            {packages.length} systems × {plans.length} plans. This runs in the background and only takes a few seconds.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  const sw = scored.bestNoHardware;
+  const planSaving = scored.todayDay - sw.day;
+  const hasAnyPick = groups.battery.length + groups.combo.length > 0;
+  const visibleRows = showAll ? sortedOutcomes : sortedOutcomes.slice(0, 12);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm text-mist-500">Today on {planName(current)}</p>
           <p className="font-display text-3xl font-bold text-navy-900">
-            {money(today * scale)} <span className="text-base font-medium text-mist-500">{noun}</span>
+            {money(scored.todayDay * scale)} <span className="text-base font-medium text-mist-500">{noun}</span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {periodToggle}
-          <button
-            type="button"
-            onClick={copySummary}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-mist-300 bg-white px-3 py-2 text-sm font-medium text-navy-800 hover:bg-mist-50"
-          >
-            <ClipboardCopy className="h-4 w-4" /> Copy summary
-          </button>
-        </div>
+        {periodToggle}
       </div>
 
-      {/* Recommendations */}
-      <section aria-label="Recommended scenarios">
-        <h3 className="mb-3 font-display text-lg font-semibold text-navy-900">What would save this customer money</h3>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <PickCard icon={<Zap className="h-4 w-4" />} title="Switch plan only" pick={picks.plan} scale={scale} noun={noun} empty="No other plan beats the current one." onSelect={setSelected} highlight={best === picks.plan} />
-          <PickCard icon={<Battery className="h-4 w-4" />} title="Add a battery" pick={picks.battery} scale={scale} noun={noun} empty="A battery doesn't pay on any of these plans." onSelect={setSelected} highlight={best === picks.battery} />
-          <PickCard icon={<Sun className="h-4 w-4" />} title="Add more solar" pick={picks.solar} scale={scale} noun={noun} empty="Extra solar doesn't reduce the bill on any of these plans." onSelect={setSelected} highlight={best === picks.solar} />
-          <PickCard icon={<Trophy className="h-4 w-4" />} title="Solar + battery" pick={picks.both} scale={scale} noun={noun} empty="No saving from combining them." onSelect={setSelected} highlight={best === picks.both} />
+      {/* Share with the customer */}
+      <Card
+        title="Send this to the customer"
+        subtitle={`${activeReportIds.length} option${activeReportIds.length === 1 ? "" : "s"} selected for the report. Tick or untick "In report" on any option below.`}
+      >
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={downloadReport} disabled={!activeReportIds.length && planSaving <= 0} className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-solar-500 px-5 py-2.5 text-sm font-semibold text-navy-950 shadow hover:bg-solar-400 disabled:opacity-50">
+            <Download className="h-4 w-4" /> Download customer report
+          </button>
+          <button type="button" onClick={previewReport} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-mist-300 bg-white px-5 py-2.5 text-sm font-semibold text-navy-800 hover:bg-mist-50">
+            <ExternalLink className="h-4 w-4" /> Preview / print to PDF
+          </button>
+          <button type="button" onClick={copySummary} className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-mist-300 bg-white px-5 py-2.5 text-sm font-semibold text-navy-800 hover:bg-mist-50">
+            {copied ? <Check className="h-4 w-4 text-green-600" /> : <ClipboardCopy className="h-4 w-4" />} {copied ? "Copied" : "Copy text summary"}
+          </button>
         </div>
-        <p className="mt-2 text-xs text-mist-500">
-          Each card is the smallest option that captures at least 90% of the saving available in that category, so the customer isn&apos;t
-          sold more capacity than the bill rewards. Payback counts only the hardware&apos;s own saving, and shows once you&apos;ve entered prices.
+        <p className="mt-3 text-xs text-mist-500">
+          The report is a single page that works on a phone. Email the file as an attachment, or open the preview and choose Print &rarr; Save as PDF. It
+          shows only customer prices, rebates and savings - never costs or margins.
         </p>
+      </Card>
+
+      {/* Plan switch */}
+      <section aria-label="Plan switch">
+        <div className="rounded-2xl border border-mist-200 bg-white p-5 shadow-sm">
+          <p className="flex items-center gap-2 text-sm font-semibold text-navy-800">
+            <Zap className="h-4 w-4 text-solar-600" /> Switch plan only (no new equipment)
+          </p>
+          {planSaving > 0.005 ? (
+            <p className="mt-2 text-navy-900">
+              <span className="font-display text-2xl font-bold">Save {money(planSaving * scale)}</span> <span className="text-mist-500">{noun}</span> by moving to{" "}
+              <strong>{planShort(sw.plan)}</strong> ({money(sw.day * scale)} {noun}).
+            </p>
+          ) : (
+            <p className="mt-2 flex items-center gap-2 text-mist-500">
+              <CircleOff className="h-4 w-4" /> No other plan in the library beats the current one for this usage.
+            </p>
+          )}
+        </div>
       </section>
 
-      {/* Plan comparison */}
-      <Card title="Plan comparison" subtitle={`Same usage on each plan, no new hardware. ${noun[0].toUpperCase()}${noun.slice(1)}.`}>
+      {/* Battery only / solar + battery picks */}
+      {[
+        { key: "battery", title: "Battery only", icon: <Battery className="h-4 w-4" />, picks: groups.battery, empty: "No battery-only package pays for itself on these plans." },
+        { key: "combo", title: "Solar + battery", icon: <Sun className="h-4 w-4" />, picks: groups.combo, empty: "No solar + battery package pays for itself on these plans." },
+      ].map((g) => (
+        <section key={g.key} aria-label={g.title}>
+          <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-semibold text-navy-900">
+            <span className="text-solar-600">{g.icon}</span> {g.title}
+          </h3>
+          {g.picks.length === 0 ? (
+            <p className="flex items-center gap-2 rounded-2xl border border-dashed border-mist-300 bg-mist-50 p-5 text-sm text-mist-500">
+              <CircleOff className="h-4 w-4 shrink-0" /> {g.empty}
+            </p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {g.picks.map((p) => (
+                <PickCard
+                  key={p.outcome.pkg.id}
+                  pick={p}
+                  plan={planById(p.outcome.planId)}
+                  current={current}
+                  scale={scale}
+                  noun={noun}
+                  inReport={activeReportIds.includes(p.outcome.pkg.id)}
+                  onToggleReport={() => toggleReport(p.outcome.pkg.id)}
+                  onSelect={() => setSelectedId(p.outcome.pkg.id)}
+                  selected={selected?.pkg.id === p.outcome.pkg.id}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+      {hasAnyPick && (
+        <p className="-mt-2 text-xs text-mist-500">
+          Payback counts only what the system itself saves, compared with the best the customer could do without it (their current plan, or a cheaper plan). Prices
+          are what the customer pays after the government rebate. Solar-only systems aren&apos;t in the price list, so they aren&apos;t priced here.
+        </p>
+      )}
+
+      {/* All systems */}
+      <Card
+        title="All systems that save money"
+        subtitle={`${sortedOutcomes.length} of ${packages.length} systems reduce this customer's bill. Click a row to see its typical day.`}
+        action={
+          <select aria-label="Sort systems by" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)} className="rounded-lg border border-mist-300 bg-white px-3 py-1.5 text-sm">
+            <option value="payback">Fastest payback</option>
+            <option value="tenYear">Best 10-year return</option>
+            <option value="saving">Biggest saving</option>
+            <option value="price">Lowest price</option>
+          </select>
+        }
+      >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[780px] text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-mist-500">
+                <th className="pb-2 pr-3 font-semibold">System</th>
+                <th className="pb-2 pr-3 text-right font-semibold">You pay</th>
+                <th className="pb-2 pr-3 text-right font-semibold">New bill</th>
+                <th className="pb-2 pr-3 text-right font-semibold">Saves</th>
+                <th className="pb-2 pr-3 text-right font-semibold">Payback</th>
+                <th className="pb-2 pr-3 text-right font-semibold">10-yr net</th>
+                <th className="pb-2 text-center font-semibold">In report</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((o) => (
+                <tr key={o.pkg.id} onClick={() => setSelectedId(o.pkg.id)} className={clsx("cursor-pointer border-t border-mist-200 hover:bg-mist-50", selected?.pkg.id === o.pkg.id && "bg-solar-300/15")}>
+                  <td className="py-2.5 pr-3">
+                    <span className="font-medium text-navy-900">{systemTitle(o.pkg)}</span>
+                    <span className="block text-xs text-mist-500">
+                      {o.pkg.brand} · {inverterLabel(o.pkg)}
+                      {o.pkg.phase ? ` · ${o.pkg.phase} phase` : ""} · {planShort(planById(o.planId))}
+                    </span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums">{money(o.pkg.youPay)}</td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums">{money(o.newDay * scale)}</td>
+                  <td className="py-2.5 pr-3 text-right font-semibold tabular-nums text-green-700">{money(o.savingDay * scale)}</td>
+                  <td className="py-2.5 pr-3 text-right tabular-nums">{o.paybackYears == null ? "-" : `${num(o.paybackYears, 1)} yrs`}</td>
+                  <td className={clsx("py-2.5 pr-3 text-right tabular-nums", o.tenYearNet < 0 && "text-red-600")}>{money(o.tenYearNet)}</td>
+                  <td className="py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" aria-label={`Include ${systemTitle(o.pkg)} in report`} checked={activeReportIds.includes(o.pkg.id)} onChange={() => toggleReport(o.pkg.id)} className="h-4 w-4 cursor-pointer accent-solar-500" />
+                  </td>
+                </tr>
+              ))}
+              {sortedOutcomes.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-mist-500">
+                    None of the selected systems reduce this customer&apos;s bill. Try other brands or a different phase on the &quot;Systems &amp; pricing&quot; step.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {sortedOutcomes.length > 12 && (
+          <button type="button" onClick={() => setShowAll(!showAll)} className="mt-3 cursor-pointer text-sm font-semibold text-navy-700 underline">
+            {showAll ? "Show fewer" : `Show all ${sortedOutcomes.length}`}
+          </button>
+        )}
+      </Card>
+
+      {/* Plan comparison */}
+      <Card title="Plan comparison" subtitle={`Same usage on each plan, no new equipment. ${noun[0].toUpperCase()}${noun.slice(1)}.`}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[620px] text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold uppercase tracking-wide text-mist-500">
                 <th className="pb-2 pr-3 font-semibold">Plan</th>
@@ -215,282 +441,138 @@ export default function Results({
                 <th className="pb-2 pr-3 text-right font-semibold">Usage</th>
                 <th className="pb-2 pr-3 text-right font-semibold">Credits</th>
                 <th className="pb-2 pr-3 text-right font-semibold">Total</th>
-                <th className="pb-2 pr-3 text-right font-semibold">vs today</th>
-                <th className="w-40 pb-2" />
+                <th className="pb-2 text-right font-semibold">vs today</th>
               </tr>
             </thead>
             <tbody>
-              {planRows.map(({ plan, r }, i) => {
-                const c = r.cost;
-                const diff = today - c.total;
-                return (
-                  <tr key={plan.id} className={clsx("border-t border-mist-200", i === 0 && "bg-green-50/60")}>
-                    <td className="py-2.5 pr-3 font-medium text-navy-900">
-                      {planName(plan)}
-                      {i === 0 && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Cheapest</span>}
-                    </td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{money(c.supply * scale)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{money((c.usage - c.discount) * scale)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{c.exportCredit + c.bonus + c.dailyCredit < 0.005 / scale ? "-" : `-${money((c.exportCredit + c.bonus + c.dailyCredit) * scale)}`}</td>
-                    <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">{money(c.total * scale)}</td>
-                    <td className={clsx("py-2.5 pr-3 text-right font-semibold tabular-nums", diff > 0.005 ? "text-green-700" : diff < -0.005 ? "text-red-600" : "text-mist-500")}>
-                      {plan.id === current.id ? "-" : diff > 0 ? `Save ${money(diff * scale)}` : `+${money(-diff * scale)}`}
-                    </td>
-                    <td className="py-2.5">
-                      <div className="h-2 rounded-full bg-mist-100">
-                        <div
-                          className={clsx("h-2 rounded-full", i === 0 ? "bg-green-500" : "bg-navy-600")}
-                          style={{ width: `${Math.max(2, (Math.max(0, c.total) / worstPlan) * 100)}%` }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs text-mist-500">
-          Credits are solar export credits, any export bonus and any daily credit the plan earns for this usage. Usage is after any discount.
-        </p>
-      </Card>
-
-      {/* Battery curve */}
-      <Card
-        title="How big should the battery be?"
-        subtitle="Saving from each battery size on one plan. Watch for where the saving stops growing."
-        action={
-          <div className="flex flex-wrap gap-2">
-            <select
-              aria-label="Plan for battery sizing"
-              className="rounded-lg border border-mist-300 bg-white px-3 py-1.5 text-sm"
-              value={curvePlan.id}
-              onChange={(e) => setCurvePlanId(e.target.value)}
-            >
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {planName(p)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Extra solar for battery sizing"
-              className="rounded-lg border border-mist-300 bg-white px-3 py-1.5 text-sm"
-              value={curveSolar}
-              onChange={(e) => setCurveSolar(Number(e.target.value))}
-            >
-              {solarSizes.map((s) => (
-                <option key={s} value={s}>
-                  {s === 0 ? "No extra solar" : `+ ${num(s, 1)} kW solar`}
-                </option>
-              ))}
-            </select>
-          </div>
-        }
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-mist-500">
-                <th className="pb-2 pr-3 font-semibold">Battery</th>
-                <th className="pb-2 pr-3 text-right font-semibold">Bill</th>
-                <th className="pb-2 pr-3 text-right font-semibold">Battery saves</th>
-                <th className="pb-2 pr-3 text-right font-semibold">Saves vs today</th>
-                <th className="pb-2 pr-3 text-right font-semibold">Cycles/day</th>
-                <th className="pb-2 pr-3 text-right font-semibold">Payback</th>
-                <th className="w-36 pb-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {curveRows.map((r) => {
-                const batterySaving = curveNoBattery - r.cost.total;
-                const price = priceOf(r.batteryKwh, 0);
-                return (
-                  <tr key={r.batteryKwh} className="cursor-pointer border-t border-mist-200 hover:bg-mist-50" onClick={() => setSelected({ planId: curvePlan.id, battery: r.batteryKwh, solar: curveSolar })}>
-                    <td className="py-2.5 pr-3 font-medium text-navy-900">{r.batteryKwh === 0 ? "No battery" : `${num(r.batteryKwh, 1)} kWh`}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{money(r.cost.total * scale)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{r.batteryKwh === 0 ? "-" : money(batterySaving * scale)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">{money((today - r.cost.total) * scale)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums text-mist-500">{r.batteryKwh === 0 ? "-" : num(r.cycles, 2)}</td>
-                    <td className="py-2.5 pr-3 text-right tabular-nums">
-                      {r.batteryKwh === 0 || price == null ? "-" : batterySaving > 0.005 ? `${num(price / (batterySaving * 365), 1)} yrs` : "never"}
-                    </td>
-                    <td className="py-2.5">
-                      <div className="h-2 rounded-full bg-mist-100">
-                        <div className="h-2 rounded-full bg-solar-500" style={{ width: `${Math.max(0, (batterySaving / maxCurveSaving) * 100)}%` }} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Scenario grid */}
-      <Card
-        title="Every plan and battery size"
-        subtitle={`${noun[0].toUpperCase()}${noun.slice(1)} bill, with ${curveSolar === 0 ? "no extra solar" : `${num(curveSolar, 1)} kW extra solar`}. Green is cheaper than today. Click a cell to see the typical day.`}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-separate border-spacing-1 text-sm">
-            <thead>
-              <tr className="text-xs font-semibold uppercase tracking-wide text-mist-500">
-                <th className="px-2 pb-1 text-left font-semibold">Plan</th>
-                {batterySizes.map((b) => (
-                  <th key={b} className="px-2 pb-1 text-right font-semibold">
-                    {b === 0 ? "No battery" : `${num(b, 1)} kWh`}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((p) => {
-                const cells = batterySizes.map((b) => get(p.id, b, curveSolar));
-                const rowBest = Math.min(...cells.map((c) => c.cost.total));
-                return (
-                  <tr key={p.id}>
-                    <td className="px-2 py-1 font-medium text-navy-900">{planName(p)}</td>
-                    {cells.map((c) => {
-                      const saving = today - c.cost.total;
-                      const isSel = sel.planId === p.id && sel.battery === c.batteryKwh && sel.solar === c.solarKw;
-                      return (
-                        <td key={c.batteryKwh} className="p-0">
-                          <button
-                            type="button"
-                            onClick={() => setSelected({ planId: p.id, battery: c.batteryKwh, solar: c.solarKw })}
-                            className={clsx(
-                              "w-full cursor-pointer rounded-md px-2 py-1.5 text-right tabular-nums transition-shadow hover:shadow-md",
-                              saving > 0.005 ? "bg-green-100 text-green-900" : saving < -0.005 ? "bg-red-50 text-red-800" : "bg-mist-100 text-navy-800",
-                              c.cost.total === rowBest && "font-bold",
-                              isSel && "ring-2 ring-navy-900"
-                            )}
-                          >
-                            {money(c.cost.total * scale)}
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
+              {plans
+                .map((p) => ({ p, c: lookup(p.id, 0, 0)!.cost }))
+                .sort((a, b) => a.c.total - b.c.total)
+                .map(({ p, c }, i) => {
+                  const diff = scored.todayDay - c.total;
+                  const credits = c.exportCredit + c.bonus + c.dailyCredit;
+                  return (
+                    <tr key={p.id} className={clsx("border-t border-mist-200", i === 0 && "bg-green-50/60")}>
+                      <td className="py-2.5 pr-3 font-medium text-navy-900">
+                        {planName(p)}
+                        {i === 0 && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Cheapest</span>}
+                      </td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">{money(c.supply * scale)}</td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">{money((c.usage - c.discount) * scale)}</td>
+                      <td className="py-2.5 pr-3 text-right tabular-nums">{credits * scale < 0.5 ? "-" : `-${money(credits * scale)}`}</td>
+                      <td className="py-2.5 pr-3 text-right font-semibold tabular-nums">{money(c.total * scale)}</td>
+                      <td className={clsx("py-2.5 text-right font-semibold tabular-nums", diff > 0.005 ? "text-green-700" : diff < -0.005 ? "text-red-600" : "text-mist-500")}>
+                        {p.id === current.id ? "-" : diff > 0 ? `Save ${money(diff * scale)}` : `+${money(-diff * scale)}`}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
       </Card>
 
       {/* Typical day */}
-      <Card
-        title="A typical day"
-        subtitle={`${planName(selPlan)} - ${hardwareLabel(sel.battery, sel.solar)}`}
-        action={
-          <div className="text-right text-sm">
-            <p className="font-semibold text-navy-900">
-              {money(selDetail.cost.total * scale)} <span className="font-normal text-mist-500">{noun}</span>
-            </p>
-            <p className="text-mist-500">
-              {selBase.total - selDetail.cost.total >= 0 ? "saves" : "costs"} {money(Math.abs(selBase.total - selDetail.cost.total) * scale)} vs same plan today
-            </p>
-          </div>
-        }
-      >
-        <DayChart plan={selPlan} baseline={base} detail={selDetail} />
-        <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <Stat label="Grid import" value={`${num(selDetail.cost.importKwh, 1)} kWh/day`} sub={`was ${num(selBase.importKwh, 1)}`} />
-          <Stat label="Solar exported" value={`${num(selDetail.cost.exportKwh, 1)} kWh/day`} sub={`was ${num(selBase.exportKwh, 1)}`} />
-          <Stat label="Daily credit earned" value={selPlan.dailyCredit ? (selDetail.cost.dailyCredit > 0 ? "Yes" : "No") : "n/a"} sub={selPlan.dailyCredit ? `${money(selDetail.cost.dailyCredit, true)}/day` : ""} />
-          <Stat label="Battery cycles" value={selDetail.batteryKwh > 0 ? `${num(selDetail.cycles, 2)} /day` : "n/a"} sub="" />
-        </dl>
-      </Card>
+      {selected && detail && (
+        <Card
+          title="A typical day"
+          subtitle={`${selected.pkg.brand} ${systemTitle(selected.pkg)} on ${planShort(planById(selected.planId))}`}
+          action={
+            <div className="text-right text-sm">
+              <p className="font-semibold text-navy-900">
+                {money(selected.newDay * scale)} <span className="font-normal text-mist-500">{noun}</span>
+              </p>
+              <p className="text-mist-500">saves {money(selected.savingDay * scale)} vs today</p>
+            </div>
+          }
+        >
+          <DayChart plan={planById(selected.planId)} baseline={base} detail={detail} />
+          <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+            <Stat label="Grid import" value={`${num(detail.cost.importKwh, 1)} kWh/day`} />
+            <Stat label="Solar exported" value={`${num(detail.cost.exportKwh, 1)} kWh/day`} />
+            <Stat label="Daily credit earned" value={planById(selected.planId).dailyCredit ? (detail.cost.dailyCredit > 0 ? "Yes" : "No") : "n/a"} />
+            <Stat label="Battery cycles" value={`${num(detail.cycles, 2)} /day`} />
+          </dl>
+        </Card>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs font-semibold uppercase tracking-wide text-mist-500">{label}</dt>
       <dd className="mt-1 font-display text-base font-semibold text-navy-900">{value}</dd>
-      {sub && <dd className="text-xs text-mist-500">{sub}</dd>}
     </div>
   );
 }
 
 function PickCard({
-  icon,
-  title,
   pick,
+  plan,
+  current,
   scale,
   noun,
-  empty,
+  inReport,
+  onToggleReport,
   onSelect,
-  highlight,
+  selected,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  pick: Pick | null;
+  pick: Pick;
+  plan: Plan;
+  current: Plan;
   scale: number;
   noun: string;
-  empty: string;
-  onSelect: (s: { planId: string; battery: number; solar: number }) => void;
-  highlight: boolean;
+  inReport: boolean;
+  onToggleReport: () => void;
+  onSelect: () => void;
+  selected: boolean;
 }) {
-  if (!pick) {
-    return (
-      <div className="flex flex-col rounded-2xl border border-dashed border-mist-300 bg-mist-50 p-5">
-        <p className="flex items-center gap-2 text-sm font-semibold text-mist-500">
-          {icon} {title}
-        </p>
-        <p className="mt-4 flex items-start gap-2 text-sm text-mist-500">
-          <CircleOff className="mt-0.5 h-4 w-4 shrink-0" /> {empty}
-        </p>
-      </div>
-    );
-  }
-  const payback = pick.price != null && pick.price > 0 && pick.hwSaving > 0.005 ? pick.price / (pick.hwSaving * 365) : null;
+  const o = pick.outcome;
   return (
-    <button
-      type="button"
-      onClick={() => onSelect({ planId: pick.row.planId, battery: pick.row.batteryKwh, solar: pick.row.solarKw })}
-      className={clsx(
-        "flex cursor-pointer flex-col rounded-2xl border bg-white p-5 text-left shadow-sm transition-shadow hover:shadow-md",
-        highlight ? "border-green-500 ring-2 ring-green-500/30" : "border-mist-200"
-      )}
-    >
-      <p className="flex items-center gap-2 text-sm font-semibold text-navy-800">
-        <span className="text-solar-600">{icon}</span> {title}
-        {highlight && <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">Best</span>}
-      </p>
-      <p className="mt-3 font-display text-2xl font-bold text-navy-900">
-        Save {money(pick.saving * scale)}
-        <span className="ml-1 text-sm font-medium text-mist-500">{noun}</span>
-      </p>
-      <p className="mt-1 text-sm text-navy-800">{planName(pick.plan)}</p>
-      <p className="text-sm text-mist-500">{hardwareLabel(pick.row.batteryKwh, pick.row.solarKw)}</p>
-      <dl className="mt-3 space-y-1 border-t border-mist-200 pt-3 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-mist-500">New bill</dt>
-          <dd className="font-semibold tabular-nums text-navy-900">{money(pick.row.cost.total * scale)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-mist-500">Per year</dt>
-          <dd className="font-semibold tabular-nums text-navy-900">{money(pick.saving * 365)} saved</dd>
-        </div>
-        {(pick.row.batteryKwh > 0 || pick.row.solarKw > 0) && (
-          <div className="flex justify-between">
-            <dt className="text-mist-500">Hardware payback</dt>
-            <dd className="font-semibold tabular-nums text-navy-900">
-              {payback != null ? `${num(payback, 1)} years` : pick.hwSaving <= 0.005 ? "none" : "add prices"}
-            </dd>
-          </div>
-        )}
-      </dl>
-      {pick.max && pick.max.row !== pick.row && (
-        <p className="mt-3 text-xs text-mist-500">
-          Most possible: {money(pick.max.saving * scale)} {noun} with {hardwareLabel(pick.max.row.batteryKwh, pick.max.row.solarKw)} on {planName(pick.max.plan)}.
+    <div className={clsx("flex flex-col rounded-2xl border bg-white p-5 shadow-sm", selected ? "border-navy-900 ring-2 ring-navy-900/20" : "border-mist-200")}>
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {pick.reasons.map((r) => (
+          <span key={r} className="rounded-full bg-solar-300/30 px-2.5 py-0.5 text-xs font-semibold text-navy-800">
+            {r}
+          </span>
+        ))}
+      </div>
+      <button type="button" onClick={onSelect} className="cursor-pointer text-left">
+        <p className="font-display text-lg font-semibold text-navy-900">{systemTitle(o.pkg)}</p>
+        <p className="text-sm text-mist-500">
+          {o.pkg.brand} · {inverterLabel(o.pkg)}
+          {o.pkg.phase ? ` · ${o.pkg.phase} phase` : ""}
         </p>
-      )}
-    </button>
+        <p className="mt-3 font-display text-2xl font-bold text-green-700">
+          Save {money(o.savingDay * scale)} <span className="text-sm font-medium text-mist-500">{noun}</span>
+        </p>
+      </button>
+      <p className="mt-1 text-sm text-navy-800">
+        On {planShort(plan)}
+        {plan.id !== current.id && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800">plan switch</span>}
+      </p>
+      <dl className="mt-3 space-y-1 border-t border-mist-200 pt-3 text-sm">
+        <Row k="New bill" v={money(o.newDay * scale)} />
+        <Row k="System price" v={money(o.pkg.price)} />
+        <Row k="Rebate" v={`-${money(o.pkg.rebate)}`} />
+        <Row k="You pay" v={money(o.pkg.youPay)} strong />
+        <Row k="Payback" v={o.paybackYears == null ? "-" : `${num(o.paybackYears, 1)} years`} strong />
+        <Row k="10-year net" v={money(o.tenYearNet)} />
+      </dl>
+      <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm font-medium text-navy-800">
+        <input type="checkbox" checked={inReport} onChange={onToggleReport} className="h-4 w-4 cursor-pointer accent-solar-500" /> In customer report
+      </label>
+    </div>
+  );
+}
+
+function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
+  return (
+    <div className="flex justify-between">
+      <dt className="text-mist-500">{k}</dt>
+      <dd className={clsx("tabular-nums text-navy-900", strong && "font-semibold")}>{v}</dd>
+    </div>
   );
 }

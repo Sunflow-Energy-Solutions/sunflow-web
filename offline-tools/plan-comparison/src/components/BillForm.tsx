@@ -4,6 +4,8 @@ import { AlertTriangle, CheckCircle2, FilePlus2 } from "lucide-react";
 import { buildBaseProfile, modelBillTotal } from "@/lib/energy/engine";
 import { DEFAULT_EV, SAMPLE_BILLS, newBlankPlan } from "@/lib/energy/samples";
 import type { Assumptions, BillInput, HouseholdPattern } from "@/lib/energy/types";
+import { parsedToBill } from "@/lib/billParser";
+import BillUpload from "./BillUpload";
 import TariffEditor from "./TariffEditor";
 import { Card, Field, NumInput, SmallButton, inputClass, money, num } from "./ui";
 
@@ -50,6 +52,10 @@ export default function BillForm({
 
   return (
     <div className="space-y-6">
+      <Card title="Upload a bill" subtitle="The quickest way in. Or skip this and type the figures in below.">
+        <BillUpload onParsed={(parsed) => onChange(parsedToBill(parsed, bill))} />
+      </Card>
+
       <Card
         title="Customer & bill period"
         subtitle="Type in what's on the customer's electricity bill. Everything stays in this browser."

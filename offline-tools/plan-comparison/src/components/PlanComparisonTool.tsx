@@ -4,29 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Battery, FileText, LineChart, ListChecks, RotateCcw, ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 import { buildBaseProfile } from "@/lib/energy/engine";
+import { filterPackages } from "@/lib/energy/analysis";
+import { PACKAGES } from "@/lib/energy/catalogue.generated";
 import {
   DEFAULT_ASSUMPTIONS,
-  DEFAULT_BATTERY_SIZES,
-  DEFAULT_SOLAR_SIZES,
   SAMPLE_BILLS,
   SEED_PLANS,
 } from "@/lib/energy/samples";
-import type { Assumptions, BillInput, Plan, SizeOption } from "@/lib/energy/types";
+import type { Assumptions, BillInput, Plan, SystemFilters } from "@/lib/energy/types";
 import BillForm from "./BillForm";
 import HardwareSettings from "./HardwareSettings";
 import PlanLibrary from "./PlanLibrary";
 import Results from "./Results";
 import { SmallButton } from "./ui";
 
-const STORAGE_KEY = "sunflow-plan-tool-v1";
+const STORAGE_KEY = "sunflow-plan-tool-v2";
 
 interface ToolState {
   bill: BillInput;
   library: Plan[];
   excluded: string[];
   assumptions: Assumptions;
-  batteries: SizeOption[];
-  solars: SizeOption[];
+  filters: SystemFilters;
 }
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -37,8 +36,7 @@ function defaults(): ToolState {
     library: clone(SEED_PLANS),
     excluded: [],
     assumptions: { ...DEFAULT_ASSUMPTIONS },
-    batteries: DEFAULT_BATTERY_SIZES.map((size) => ({ size, price: null })),
-    solars: DEFAULT_SOLAR_SIZES.map((size) => ({ size, price: null })),
+    filters: { brands: [], phase: "Single", includeBattery: true, includeSolarBattery: true },
   };
 }
 
@@ -53,8 +51,7 @@ function load(): ToolState {
       library: Array.isArray(s.library) ? s.library : d.library,
       excluded: Array.isArray(s.excluded) ? s.excluded : d.excluded,
       assumptions: { ...d.assumptions, ...s.assumptions },
-      batteries: Array.isArray(s.batteries) && s.batteries.length ? s.batteries : d.batteries,
-      solars: Array.isArray(s.solars) && s.solars.length ? s.solars : d.solars,
+      filters: { ...d.filters, ...s.filters },
     };
   } catch {
     return d;
@@ -66,7 +63,7 @@ type Tab = "bill" | "plans" | "hardware" | "results";
 const TABS: { id: Tab; label: string; icon: typeof FileText }[] = [
   { id: "bill", label: "1. Customer bill", icon: FileText },
   { id: "plans", label: "2. Plans to compare", icon: ListChecks },
-  { id: "hardware", label: "3. Battery & solar", icon: Battery },
+  { id: "hardware", label: "3. Systems & pricing", icon: Battery },
   { id: "results", label: "4. Results", icon: LineChart },
 ];
 
@@ -83,7 +80,7 @@ export default function PlanComparisonTool() {
     }
   }, [state]);
 
-  const { bill, library, excluded, assumptions, batteries, solars } = state;
+  const { bill, library, excluded, assumptions, filters } = state;
 
   const comparisonPlans = useMemo<Plan[]>(() => {
     const current: Plan = { ...bill.plan, id: "current" };
@@ -93,7 +90,11 @@ export default function PlanComparisonTool() {
     return [current, ...others];
   }, [bill.plan, library, excluded]);
 
-  const base = useMemo(() => buildBaseProfile(bill, assumptions).profile, [bill, assumptions]);
+  const baseInfo = useMemo(() => buildBaseProfile(bill, assumptions), [bill, assumptions]);
+  const base = baseInfo.profile;
+  const packages = useMemo(() => filterPackages(PACKAGES, filters), [filters]);
+  const usagePerDay = base.D.reduce((s, v) => s + v, 0);
+  const exportPerDay = base.X.reduce((s, v) => s + v, 0);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8">
@@ -148,10 +149,8 @@ export default function PlanComparisonTool() {
       )}
       {tab === "hardware" && (
         <HardwareSettings
-          batteries={batteries}
-          onBatteries={(b) => patch({ batteries: b })}
-          solars={solars}
-          onSolars={(s) => patch({ solars: s })}
+          filters={filters}
+          onFilters={(f) => patch({ filters: f })}
           assumptions={assumptions}
           onAssumptions={(a) => patch({ assumptions: a })}
         />
@@ -161,9 +160,10 @@ export default function PlanComparisonTool() {
           customer={bill.customer}
           plans={comparisonPlans}
           base={base}
-          batteries={batteries}
-          solars={solars}
+          packages={packages}
           assumptions={assumptions}
+          usagePerDay={usagePerDay}
+          exportPerDay={exportPerDay}
         />
       )}
 
