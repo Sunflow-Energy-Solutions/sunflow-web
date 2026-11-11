@@ -36,7 +36,9 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
   if (!base || !key) return;
 
   try {
-    const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+    // Legacy service_role keys are JWTs (both headers); newer sb_secret_ keys go in apikey only.
+    const headers: Record<string, string> = { apikey: key, "Content-Type": "application/json" };
+    if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`;
     const now = new Date().toISOString();
     const email = (lead.email ?? "").trim();
 

@@ -1,4 +1,4 @@
-import { BUSINESS, env, escapeHtml, verify } from "./_lib";
+import { BUSINESS, env, escapeHtml, serviceHeaders, verify } from "./_lib";
 
 const page = (title: string, message: string, form?: { id: string; sig: string }) =>
   new Response(
@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!id || !sig || !verify(id, sig)) return page("Link not valid", `This unsubscribe link isn't valid. Please call us on ${BUSINESS.phone} and we'll remove you.`);
 
   const base = `${env("SUPABASE_URL")}/rest/v1/records`;
-  const headers = { apikey: env("SUPABASE_SERVICE_ROLE_KEY"), Authorization: `Bearer ${env("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" };
+  const headers = { ...serviceHeaders(env("SUPABASE_SERVICE_ROLE_KEY")), "Content-Type": "application/json" };
 
   const found = await fetch(`${base}?id=eq.${encodeURIComponent(id)}&kind=eq.customer&select=data`, { headers });
   const rows = (await found.json().catch(() => [])) as { data: Record<string, unknown> }[];

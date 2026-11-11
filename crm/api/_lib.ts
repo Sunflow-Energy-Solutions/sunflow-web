@@ -21,12 +21,16 @@ export async function requireStaff(request: Request): Promise<{ email: string } 
   return user.email ? { email: user.email } : null;
 }
 
+/** Legacy service_role keys are JWTs and go in both headers; the newer sb_secret_ keys go in apikey only. */
+export const serviceHeaders = (key: string): Record<string, string> =>
+  key.startsWith("eyJ") ? { apikey: key, Authorization: `Bearer ${key}` } : { apikey: key };
+
 /** Server-side access to the database using the service-role key (bypasses row-level security). Never expose it to the browser. */
 export function sb(path: string, init: RequestInit = {}): Promise<Response> {
   const key = env("SUPABASE_SERVICE_ROLE_KEY");
   return fetch(`${env("SUPABASE_URL")}/rest/v1/${path}`, {
     ...init,
-    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(init.headers as Record<string, string> | undefined) },
+    headers: { ...serviceHeaders(key), "Content-Type": "application/json", ...(init.headers as Record<string, string> | undefined) },
   });
 }
 
