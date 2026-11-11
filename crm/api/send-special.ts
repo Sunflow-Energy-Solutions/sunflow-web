@@ -19,7 +19,17 @@ You are receiving this because you have dealt with Sunflow and agreed to hear fr
 </td></tr></table></td></tr></table></body></html>`;
 }
 
+/** Any unexpected failure (e.g. a missing Vercel setting) is returned as a readable message instead of a bare 500. */
 export async function POST(request: Request): Promise<Response> {
+  try {
+    return await handle(request);
+  } catch (e) {
+    console.error("send-special failed", e);
+    return json({ error: e instanceof Error ? e.message : "Sending failed." }, 500);
+  }
+}
+
+async function handle(request: Request): Promise<Response> {
   const staff = await requireStaff(request).catch(() => null);
   if (!staff) return json({ error: "Please sign in again." }, 401);
   if (!(await isAdmin(staff.email))) return json({ error: "Only an admin can send specials." }, 403);
