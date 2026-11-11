@@ -112,3 +112,5 @@ Open the CRM address, sign in, then iPhone: Safari -> Share -> **Add to Home Scr
 - `api/send-special.ts`, `api/unsubscribe.ts` - email sending and unsubscribe; `api/xero.ts`, `api/xero-callback.ts`, `api/_xero.ts` - Xero
 - `../src/lib/crm.ts` - the website-side function that creates CRM customers from enquiries
 - `npm run icons` - rebuild app icons from the Sunflow logo
+- `npm run brands` - rebuild the panel / battery / inverter / EV charger brand suggestions from `output/pylon-components/Sunflow_Supplier_Catalogue.xlsx`
+  (brand names only, no prices; writes `src/catalogue.generated.ts`). Run it after the catalogue changes, then commit.

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CATALOGUE_BRANDS } from "../catalogue.generated";
 import { installClashes } from "../events";
 import { useStore } from "../store";
 import { xeroCall } from "../xero";
@@ -9,15 +10,17 @@ import {
 import { addDays, fullName, today, uid } from "../utils";
 import { Button, Check, Field, Input, Select, Sheet, Textarea } from "./ui";
 
-const BRANDS = ["AlphaESS", "FoxESS", "GoodWe", "Growatt", "Sigenergy", "Sungrow", "Tesla", "Enphase", "SolarEdge", "Fronius"];
-
-function BrandList() {
+/** Brand suggestions come from the Sunflow supplier catalogue (scripts/import-brands.mjs). Any other brand can still be typed. */
+function BrandLists() {
+  const lists = { "brands-panel": CATALOGUE_BRANDS.panels, "brands-battery": CATALOGUE_BRANDS.batteries, "brands-inverter": CATALOGUE_BRANDS.inverters, "brands-ev": CATALOGUE_BRANDS.evChargers };
   return (
-    <datalist id="brands">
-      {BRANDS.map((b) => (
-        <option key={b} value={b} />
+    <>
+      {Object.entries(lists).map(([id, brands]) => (
+        <datalist key={id} id={id}>
+          {brands.map((b) => <option key={b} value={b} />)}
+        </datalist>
       ))}
-    </datalist>
+    </>
   );
 }
 
@@ -220,17 +223,17 @@ export function DealSheet({ customerId, deal, onClose }: { customerId: string; d
       onClose={onClose}
       footer={<Button className="w-full" onClick={save}>Save</Button>}
     >
-      <BrandList />
+      <BrandLists />
       <div className="space-y-3.5">
         <Field label="Job name (optional)"><Input value={f.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. 13.2kW + 20kWh Sigenergy" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Solar size (kW)"><Input inputMode="decimal" value={f.solarKw} onChange={(e) => set("solarKw", e.target.value)} placeholder="6.6" /></Field>
-          <Field label="Panel brand"><Input list="brands" value={f.panelBrand} onChange={(e) => set("panelBrand", e.target.value)} /></Field>
+          <Field label="Panel brand"><Input list="brands-panel" value={f.panelBrand} onChange={(e) => set("panelBrand", e.target.value)} /></Field>
           <Field label="Battery (kWh)"><Input inputMode="decimal" value={f.batteryKwh} onChange={(e) => set("batteryKwh", e.target.value)} placeholder="10" /></Field>
-          <Field label="Battery brand"><Input list="brands" value={f.batteryBrand} onChange={(e) => set("batteryBrand", e.target.value)} /></Field>
+          <Field label="Battery brand"><Input list="brands-battery" value={f.batteryBrand} onChange={(e) => set("batteryBrand", e.target.value)} /></Field>
         </div>
-        <Field label="Inverter brand"><Input list="brands" value={f.inverterBrand} onChange={(e) => set("inverterBrand", e.target.value)} /></Field>
-        <Field label="EV charger"><Input value={f.evCharger} onChange={(e) => set("evCharger", e.target.value)} placeholder="Model, if any" /></Field>
+        <Field label="Inverter brand"><Input list="brands-inverter" value={f.inverterBrand} onChange={(e) => set("inverterBrand", e.target.value)} /></Field>
+        <Field label="EV charger"><Input list="brands-ev" value={f.evCharger} onChange={(e) => set("evCharger", e.target.value)} placeholder="Brand and model, if any" /></Field>
         <Field label="Pylon project link" hint="Paste the address of this job's project in Pylon so you can jump straight back to it.">
           <Input type="url" inputMode="url" value={f.pylonUrl} onChange={(e) => set("pylonUrl", e.target.value)} placeholder="https://app.getpylon.com/..." autoCapitalize="off" />
         </Field>

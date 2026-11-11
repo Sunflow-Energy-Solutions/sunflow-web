@@ -267,6 +267,3 @@ export const SOURCES = [
   "Door knock / event", "Repeat customer", "Other",
 ];
 
-export const BRANDS = {
-  inverter: ["AlphaESS", "FoxESS", "GoodWe", "Growatt", "Sigenergy", "Sungrow", "Other"],
-};
