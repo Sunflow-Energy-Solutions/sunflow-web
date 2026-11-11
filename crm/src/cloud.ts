@@ -19,6 +19,7 @@ export const COLLECTION_KIND: Record<keyof Db, Kind> = {
   campaigns: "campaign",
   staff: "staff",
   files: "file",
+  settings: "setting",
 };
 
 export async function pushRows(rows: Row[]): Promise<void> {

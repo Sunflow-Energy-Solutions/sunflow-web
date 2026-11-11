@@ -27,9 +27,13 @@ async function shrinkImage(file: File): Promise<{ blob: Blob; mime: string }> {
 
 const safeName = (n: string) => n.replace(/[^\w.\- ]+/g, "_").slice(-80);
 
-export default function Files({ customerId, dealId }: { customerId: string; dealId?: string }) {
+/**
+ * Photos and documents. With no extra props it shows everything for the customer. `dealId` narrows it to one job,
+ * and `checkId` to one checklist item (proof for that step), so a certificate lives next to the "CES lodged" tick.
+ */
+export default function Files({ customerId, dealId, checkId, defaultCategory, compact }: { customerId: string; dealId?: string; checkId?: string; defaultCategory?: string; compact?: boolean }) {
   const { db, addFile, deleteFile } = useStore();
-  const [category, setCategory] = useState(FILE_CATEGORIES[0]);
+  const [category, setCategory] = useState(defaultCategory ?? FILE_CATEGORIES[0]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -37,7 +41,7 @@ export default function Files({ customerId, dealId }: { customerId: string; deal
   const fileRef = useRef<HTMLInputElement>(null);
 
   const files = db.files
-    .filter((f) => f.customerId === customerId && (dealId === undefined || f.dealId === dealId || f.dealId === null))
+    .filter((f) => f.customerId === customerId && (checkId ? f.checkId === checkId : dealId === undefined || f.dealId === dealId || f.dealId === null))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const key = files.map((f) => f.path).join("|");
 
@@ -60,7 +64,7 @@ export default function Files({ customerId, dealId }: { customerId: string; deal
         const id = uid();
         const path = `${customerId}/${id}-${safeName(f.name)}`;
         await uploadStored(path, blob, mime || "application/octet-stream");
-        addFile({ id, customerId, dealId: dealId ?? null, name: f.name, path, mime, size: blob.size, category });
+        addFile({ id, customerId, dealId: dealId ?? null, checkId: checkId ?? null, name: f.name, path, mime, size: blob.size, category });
       }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Upload failed");
@@ -76,7 +80,7 @@ export default function Files({ customerId, dealId }: { customerId: string; deal
   }
 
   return (
-    <Card className="p-3.5">
+    <Card className={compact ? "bg-mist-50 p-2.5 shadow-none" : "p-3.5"}>
       <div className="flex flex-wrap items-center gap-2">
         <Select value={category} onChange={(e) => setCategory(e.target.value)} className="w-44" aria-label="Type of file">
           {FILE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}

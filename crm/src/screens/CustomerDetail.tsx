@@ -2,6 +2,7 @@ import { ArrowLeft, CalendarPlus, ExternalLink, Mail, MapPin, MessageSquare, Pen
 import { useState } from "react";
 import Checklist from "../components/Checklist";
 import Files from "../components/Files";
+import { ThankYouSheet } from "../components/ThankYou";
 import { CustomerSheet, DealSheet, LostSheet, QuoteSheet, TaskSheet, XeroSheet } from "../components/forms";
 import { outstandingRequired } from "../checklist";
 import { useXeroStatus } from "../xero";
@@ -190,6 +191,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
   const pylon = pylonLink(customer, deal);
   const [lost, setLost] = useState(false);
   const [xeroOpen, setXeroOpen] = useState(false);
+  const [thanksOpen, setThanksOpen] = useState(false);
   const xeroStatus = useXeroStatus();
   const invoiced = (deal.xero ?? []).reduce((n, x) => n + x.amount, 0);
 
@@ -202,6 +204,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
     }
     moveDeal(deal.id, stage);
     if (stage === "won" && xeroStatus.connected && deal.value) setXeroOpen(true);
+    if (stage === "installed" && !deal.thanks) setThanksOpen(true);
   }
 
   return (
@@ -260,6 +263,15 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
         </div>
       )}
 
+      {deal.stage === "installed" && (
+        <div className={`mt-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-sm ${deal.thanks ? "bg-emerald-50" : "bg-solar-300/30"}`}>
+          <span className={`flex-1 ${deal.thanks ? "text-emerald-800" : "font-semibold text-navy-900"}`}>
+            {deal.thanks ? `Thank-you sent ${fmtDate(deal.thanks.sentAt)} (${deal.thanks.channels.join(" + ")})` : "Job complete? Thank them and ask for a review."}
+          </span>
+          <Button size="sm" variant={deal.thanks ? "soft" : "primary"} onClick={() => setThanksOpen(true)}>{deal.thanks ? "Send again" : "Thank you & review"}</Button>
+        </div>
+      )}
+
       <Checklist deal={deal} customer={customer} />
 
       <div className="mt-3">
@@ -306,6 +318,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
         </Button>
       </div>
 
+      {thanksOpen && <ThankYouSheet deal={deal} customer={customer} onClose={() => setThanksOpen(false)} />}
       {xeroOpen && <XeroSheet deal={deal} customer={customer} onClose={() => setXeroOpen(false)} />}
       {lost && (
         <LostSheet

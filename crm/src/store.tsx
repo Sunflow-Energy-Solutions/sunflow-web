@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { COLLECTION_KIND, cloudEnabled, pullRows, pushRows, removeStored, type Row } from "./cloud";
 import { obsoleteTaskIds, tasksForStage } from "./automation";
-import { buildChecklist, syncChecklist } from "./checklist";
+import { TEMPLATE, buildChecklist, syncChecklist } from "./checklist";
 import {
-  emptyDb, emptySystem, stageLabel, type CheckItem, type Campaign, type Customer, type Db, type Deal, type FileRec,
+  SETTINGS_ID, defaultSettings, emptyDb, emptySystem, stageLabel, type AppSettings, type CheckItem, type Campaign, type Customer, type Db, type Deal, type FileRec,
   type Note, type Stage, type Staff, type Task,
 } from "./types";
 import { nowIso, today, uid } from "./utils";
@@ -40,6 +40,9 @@ type Store = {
   db: Db;
   /** The signed-in person. In "this device only" mode everyone is an admin. */
   me: Me;
+  /** Review links and thank-you wording (defaults filled in until an admin saves their own) */
+  settings: AppSettings;
+  saveSettings: (patch: Partial<AppSettings>) => void;
   sync: SyncState;
   syncError: string;
   pending: number;
@@ -75,6 +78,10 @@ type Store = {
   setCheck: (dealId: string, itemId: string, done: boolean) => void;
   addCheckItem: (dealId: string, label: string, group: string) => void;
   removeCheckItem: (dealId: string, itemId: string) => void;
+  /** Add a standard checklist item that isn't on this job (it was skipped or doesn't apply by default) */
+  addTemplateItem: (dealId: string, key: string) => void;
+  /** Record that a thank-you / review request was sent */
+  markThanks: (dealId: string, channels: ("email" | "sms")[]) => void;
   importAll: (data: Db) => void;
 };
 
@@ -203,6 +210,7 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
     return { email: myEmail, name: s?.name ?? myEmail.split("@")[0], staffId: s?.id ?? "", isAdmin: s?.role === "admin" || noAdmins };
   }, [db.staff, myEmail]);
   meNameRef.current = me.name;
+  const settings = useMemo<AppSettings>(() => ({ ...defaultSettings(), ...(db.settings.find((s) => s.id === SETTINGS_ID) ?? {}) }), [db.settings]);
 
   const find = <K extends Collection>(c: K, id: string) => (dbRef.current[c] as AnyRecord[]).find((r) => r.id === id);
 
@@ -346,7 +354,45 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       );
     const addCheckItem: Store["addCheckItem"] = (dealId, label, group) =>
       patchChecklist(dealId, (l) => [...l, { id: uid(), key: "", group, label, required: false, done: false, doneAt: null, doneBy: "" }]);
-    const removeCheckItem: Store["removeCheckItem"] = (dealId, itemId) => patchChecklist(dealId, (l) => l.filter((i) => i.id !== itemId));
+    const removeCheckItem: Store["removeCheckItem"] = (dealId, itemId) => {
+      const d = find("deals", dealId) as Deal | undefined;
+      const item = d?.checklist?.find((i) => i.id === itemId);
+      if (!d || !item) return;
+      commit("deals", {
+        ...d,
+        checklist: d.checklist!.filter((i) => i.id !== itemId),
+        // remember template items that were taken off so a later system change doesn't put them back
+        checklistSkipped: item.key ? [...new Set([...(d.checklistSkipped ?? []), item.key])] : d.checklistSkipped,
+        updatedAt: stamp(),
+      });
+    };
+    const addTemplateItem: Store["addTemplateItem"] = (dealId, key) => {
+      const d = find("deals", dealId) as Deal | undefined;
+      const t = TEMPLATE.find((x) => x.key === key);
+      if (!d || !t || d.checklist?.some((i) => i.key === key)) return;
+      commit("deals", {
+        ...d,
+        checklist: [...(d.checklist ?? []), { id: uid(), key: t.key, group: t.group, label: t.label, required: t.required, done: false, doneAt: null, doneBy: "" }],
+        checklistSkipped: (d.checklistSkipped ?? []).filter((k) => k !== key),
+        updatedAt: stamp(),
+      });
+    };
+    const markThanks: Store["markThanks"] = (dealId, channels) => {
+      const d = find("deals", dealId) as Deal | undefined;
+      if (!d) return;
+      const merged = [...new Set([...(d.thanks?.channels ?? []), ...channels])];
+      // One save: the checklist has an "asked for a review" step, ticked here along with the thank-you record.
+      const checklist = d.checklist?.map((i) => (i.key === "review" && !i.done ? { ...i, done: true, doneAt: stamp(), doneBy: meNameRef.current } : i));
+      commit("deals", { ...d, ...(checklist ? { checklist } : {}), thanks: { sentAt: stamp(), by: meNameRef.current, channels: merged }, updatedAt: stamp() });
+      // the stage rules also add a "send the thank-you" reminder: finish it
+      dbRef.current.tasks
+        .filter((t) => t.dealId === dealId && !t.done && t.note.startsWith("Send the thank-you"))
+        .forEach((t) => updateTask(t.id, { done: true, doneAt: stamp() }));
+    };
+    const saveSettings: Store["saveSettings"] = (patch) => {
+      const cur = dbRef.current.settings.find((s) => s.id === SETTINGS_ID) ?? { ...defaultSettings(), createdAt: stamp() };
+      commit("settings", { ...cur, ...patch, id: SETTINGS_ID, updatedAt: stamp() });
+    };
 
     const addCampaign: Store["addCampaign"] = (c) => {
       const t = stamp();
@@ -366,10 +412,11 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       addCustomer, updateCustomer, deleteCustomer, addDeal, updateDeal, moveDeal, deleteDeal,
       addTask, updateTask, completeTask, deleteTask, addNote, deleteNote, addCampaign, importAll,
       addStaff, updateStaff, deleteStaff, addFile, deleteFile, startChecklist, setCheck, addCheckItem, removeCheckItem,
+      addTemplateItem, markThanks, saveSettings, settings,
     };
     // `find` reads from refs so it is stable; commit is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, me, sync, syncError, queuedCount, syncNow, commit]);
+  }, [db, me, settings, sync, syncError, queuedCount, syncNow, commit]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
@@ -378,7 +425,7 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
 function mergeRows(cur: Db, rows: Row[], queued: Row[]): Db {
   const next: Db = {
     customers: [...cur.customers], deals: [...cur.deals], tasks: [...cur.tasks], notes: [...cur.notes],
-    campaigns: [...cur.campaigns], staff: [...cur.staff], files: [...cur.files],
+    campaigns: [...cur.campaigns], staff: [...cur.staff], files: [...cur.files], settings: [...cur.settings],
   };
   const collectionFor = Object.fromEntries(Object.entries(COLLECTION_KIND).map(([c, k]) => [k, c])) as Record<string, Collection>;
   const waiting = new Set(queued.map((q) => q.id));

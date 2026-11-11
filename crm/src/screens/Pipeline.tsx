@@ -3,6 +3,7 @@ import { outstandingRequired, progress } from "../checklist";
 import { LostSheet } from "../components/forms";
 import { PageHeader, stageColour } from "../components/ui";
 import { useStore } from "../store";
+import { JobsProgress } from "./Jobs";
 import { STAGES, type Deal, type Stage } from "../types";
 import { fmtMoney, fullName, systemSummary } from "../utils";
 
@@ -11,6 +12,7 @@ export default function Pipeline() {
   const { db, moveDeal } = useStore();
   const [lostDeal, setLostDeal] = useState<Deal | null>(null);
   const [showLost, setShowLost] = useState(false);
+  const [view, setView] = useState<"board" | "progress">("board");
   const stages = STAGES.filter((s) => showLost || s.id !== "lost");
 
   function move(d: Deal, stage: Stage) {
@@ -22,15 +24,35 @@ export default function Pipeline() {
     moveDeal(d.id, stage);
   }
 
+  const toggle = (
+    <div className="inline-flex rounded-xl bg-mist-100 p-1" role="tablist" aria-label="Pipeline view">
+      {([["board", "Board"], ["progress", "Job progress"]] as const).map(([id, label]) => (
+        <button key={id} role="tab" aria-selected={view === id} onClick={() => setView(id)} className={`min-h-9 whitespace-nowrap rounded-lg px-3 text-sm font-semibold ${view === id ? "bg-white text-navy-900 shadow-sm" : "text-mist-500"}`}>{label}</button>
+      ))}
+    </div>
+  );
+
+  if (view === "progress") {
+    return (
+      <>
+        <PageHeader title="Pipeline" sub="Paperwork and what's left on every job" right={toggle} />
+        <JobsProgress />
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
         title="Pipeline"
         sub="Every job by stage"
         right={
-          <label className="flex min-h-10 items-center gap-2 text-sm font-medium text-mist-500">
-            <input type="checkbox" checked={showLost} onChange={(e) => setShowLost(e.target.checked)} className="size-4 accent-[#f7931e]" /> Show lost
-          </label>
+          <div className="flex flex-col items-end gap-1">
+            {toggle}
+            <label className="flex min-h-8 items-center gap-2 text-sm font-medium text-mist-500">
+              <input type="checkbox" checked={showLost} onChange={(e) => setShowLost(e.target.checked)} className="size-4 accent-[#f7931e]" /> Show lost
+            </label>
+          </div>
         }
       />
       <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-4 md:mx-0 md:px-0">

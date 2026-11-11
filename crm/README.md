@@ -14,10 +14,17 @@ It is separate from the public website: it lives in this `crm/` folder and is de
 - **Systems & quotes**: solar kW, panel / battery / inverter brand, EV charger, price, every quote sent, install date.
 - **Site details & install record** (per job, under Edit): roof type, phase, network, NMI, retailer, existing system, switchboard notes;
   then serial numbers, certificate (CES) number, electrician, warranty - the details needed for warranty claims and compliance.
-- **Photos & documents**: take a photo or attach a PDF on the customer; stored privately, shrunk on the phone before upload.
+- **Photos & documents**: take a photo or attach a PDF on the customer, the job, or a checklist step; stored privately, shrunk on the phone before upload.
 - **Paperwork checklist** (per job, starts when the job is Won): 31 Victorian steps from signed quote to handover pack, adapting to
-  solar / battery / EV. Marking a job Installed warns if required items are missing. Print a job sheet, or a blank one (More).
-  It is a **starter list** - have your licensed electrician confirm it. Edit the list in `src/checklist.ts`.
+  solar / battery / EV. Everyone sees the same ticks, with who did them and when. Add any standard step to a job from a dropdown, remove
+  steps that do not apply, or write your own. Each step has a paperclip for its photos / documents (e.g. the certificate on "CES lodged"),
+  so everything for a job is stored against the job. Marking a job Installed warns if required steps are missing. Print a job sheet if needed.
+  It is a **starter list** - have your licensed electrician confirm it. Edit the default list in `src/checklist.ts`.
+- **Job progress** (Pipeline -> Job progress): every won / installed job with a progress bar, the required steps still outstanding,
+  install date, file count, and whether the thank-you has gone out. "Only mine" filter.
+- **Thank you & review request**: when a job is marked Installed (or any time from the job), send the customer a thank-you **email** from the
+  CRM (with Google / Facebook review buttons) and a **text** that opens ready-to-send in the staff member's Messages app. Sending ticks the
+  checklist's review step, finishes the reminder and records who sent it. Admins set review links and wording in More -> Thank-you & reviews.
 - **Pipeline**: New lead -> Contacted -> Site visit -> Quote sent -> Negotiating -> Won -> Installed (or Lost, with a reason).
 - **Automatic follow-ups** (numbers in `src/automation.ts`): new lead: call today - quote sent: call after 3 and 10 days -
   lost: call after 30 days, email after 6 months - installed: check-in after 2 weeks, check-up after 12 months.
@@ -48,7 +55,8 @@ Use More -> "Try it with sample customers" to look around. Do not enter real cus
 
 ### 1. Database - Supabase
 1. Create a free project at supabase.com (choose the Sydney region).
-2. SQL Editor -> paste all of `supabase/schema.sql` -> Run. (Run it again whenever this file changes.)
+2. SQL Editor -> paste all of `supabase/schema.sql` -> Run. (Run it again whenever this file changes - it is safe to repeat.
+   The thank-you settings need the latest version.)
 3. Authentication -> Sign In / Providers -> turn **off** "Allow new users to sign up".
 4. Authentication -> Users -> **Add user** for each staff member (email + password).
 5. Project Settings -> API: copy the **Project URL**, the **anon public** key and the **service_role** key.

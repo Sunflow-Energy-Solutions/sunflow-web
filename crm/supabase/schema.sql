@@ -8,10 +8,10 @@ create table if not exists public.records (
   updated_at timestamptz not null
 );
 
--- Allowed record types (customer, deal, task, note, campaign, staff, file). Replaces the older, shorter list.
+-- Allowed record types (customer, deal, task, note, campaign, staff, file, setting). Replaces the older, shorter list.
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check
-  check (kind in ('customer','deal','task','note','campaign','staff','file'));
+  check (kind in ('customer','deal','task','note','campaign','staff','file','setting'));
 
 create index if not exists records_updated_idx on public.records (updated_at);
 create index if not exists records_kind_idx on public.records (kind);

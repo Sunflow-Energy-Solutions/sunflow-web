@@ -10,8 +10,8 @@ import { fmtDate, fullName, nowIso, systemSummary, uid } from "./utils";
  * `when` limits an item to jobs that include solar, a battery or an EV charger. `required` items trigger
  * a warning if they're not ticked when the job is marked Installed.
  */
-type Need = "solar" | "battery" | "ev" | "any";
-type Template = { key: string; group: string; label: string; required: boolean; when: Need[] };
+export type Need = "solar" | "battery" | "ev" | "any";
+export type Template = { key: string; group: string; label: string; required: boolean; when: Need[] };
 
 export const CHECKLIST_GROUPS = ["1. Sales & quote", "2. Approvals", "3. Before install", "4. Install day", "5. Compliance & handover"];
 
@@ -60,6 +60,14 @@ export const TEMPLATE: Template[] = [
   { key: "review", group: g[4], label: "Asked for a Google review / referral", required: false, when: ["any"] },
 ];
 
+/** File type pre-selected when attaching proof to a checklist item. */
+export const CATEGORY_FOR: Record<string, string> = {
+  bill: "Electricity bill", site_photos: "Site photo", id_owner: "Approval", quote_signed: "Quote / contract",
+  dnsp_approved: "Approval", dnsp_lodged: "Approval", sv_rebate: "Approval", battery_incentive: "Approval", stc_assign: "Approval",
+  install_photos: "Install photo", serials: "Install photo", commissioned: "Install photo",
+  ces: "Certificate", inspection: "Certificate", stc_submit: "Certificate", handover_pack: "Warranty",
+};
+
 function needs(deal: Deal): Set<Need> {
   const s = deal.system;
   const out = new Set<Need>(["any"]);
@@ -83,7 +91,7 @@ export function buildChecklist(deal: Deal): CheckItem[] {
 export function syncChecklist(deal: Deal): CheckItem[] | undefined {
   if (!deal.checklist) return undefined;
   const n = needs(deal);
-  const have = new Set(deal.checklist.map((c) => c.key).filter(Boolean));
+  const have = new Set([...deal.checklist.map((c) => c.key).filter(Boolean), ...(deal.checklistSkipped ?? [])]);
   const add = TEMPLATE.filter((t) => !have.has(t.key) && t.when.some((w) => n.has(w))).map(fromTemplate);
   return add.length ? [...deal.checklist, ...add] : deal.checklist;
 }

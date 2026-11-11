@@ -1,7 +1,7 @@
 import { Cloud, CloudOff, Download, LogOut, Mail, Printer, RefreshCw, Smartphone, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { printChecklist } from "../checklist";
-import { Button, Card, Field, Input, PageHeader, SectionTitle, Select } from "../components/ui";
+import { Button, Card, Field, Input, PageHeader, SectionTitle, Select, Textarea } from "../components/ui";
 import { useXeroStatus, xeroCall } from "../xero";
 import { cloudEnabled, supabase } from "../cloud";
 import { demoData } from "../demo";
@@ -153,6 +153,7 @@ export default function Settings({ email }: { email?: string }) {
       </Card>
 
       {me.isAdmin && <TeamSection />}
+      {me.isAdmin && <ThanksSettings />}
       {me.isAdmin && <XeroSection />}
 
       {me.isAdmin && (
@@ -326,6 +327,53 @@ function XeroSection() {
         {flag.includes("xero=connected") && <p className="rounded-xl bg-emerald-50 px-3 py-2 font-medium text-emerald-800">Xero connected.</p>}
         {flag.includes("xero=failed") && <p className="rounded-xl bg-red-50 px-3 py-2 font-medium text-red-700">Xero didn't connect. Try again.</p>}
         {err && <p className="rounded-xl bg-red-50 px-3 py-2 font-medium text-red-700">{err}</p>}
+      </Card>
+    </>
+  );
+}
+
+/** Review links and thank-you wording used by "Thank you & review" on completed jobs. */
+function ThanksSettings() {
+  const { settings, saveSettings } = useStore();
+  const [f, setF] = useState({
+    googleReviewUrl: settings.googleReviewUrl,
+    facebookReviewUrl: settings.facebookReviewUrl,
+    otherReviewLabel: settings.otherReviewLabel,
+    otherReviewUrl: settings.otherReviewUrl,
+    thankYouSubject: settings.thankYouSubject,
+    thankYouBody: settings.thankYouBody,
+    thankYouSms: settings.thankYouSms,
+  });
+  const [saved, setSaved] = useState(false);
+  const set = (k: keyof typeof f, v: string) => { setF((x) => ({ ...x, [k]: v })); setSaved(false); };
+  const bad = (u: string) => !!u.trim() && !/^https:\/\/\S+$/i.test(u.trim());
+
+  return (
+    <>
+      <SectionTitle>Thank-you &amp; reviews</SectionTitle>
+      <Card className="space-y-3.5 p-4">
+        <Field label="Google review link" hint="Google Business Profile -> Home -> Get more reviews -> Share review form -> copy the link.">
+          <Input type="url" value={f.googleReviewUrl} onChange={(e) => set("googleReviewUrl", e.target.value)} placeholder="https://g.page/r/..." autoCapitalize="off" />
+        </Field>
+        <Field label="Facebook review link" hint="Your page address followed by /reviews, e.g. https://www.facebook.com/yourpage/reviews">
+          <Input type="url" value={f.facebookReviewUrl} onChange={(e) => set("facebookReviewUrl", e.target.value)} autoCapitalize="off" />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Another site (name)"><Input value={f.otherReviewLabel} onChange={(e) => set("otherReviewLabel", e.target.value)} placeholder="e.g. Review us on ProductReview" /></Field>
+          <Field label="Another site (link)"><Input type="url" value={f.otherReviewUrl} onChange={(e) => set("otherReviewUrl", e.target.value)} autoCapitalize="off" /></Field>
+        </div>
+        {[f.googleReviewUrl, f.facebookReviewUrl, f.otherReviewUrl].some(bad) && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Links must start with https:// or they'll be left out.</p>}
+        <Field label="Email subject"><Input value={f.thankYouSubject} onChange={(e) => set("thankYouSubject", e.target.value)} /></Field>
+        <Field label="Email message" hint="{{firstName}} = customer's first name, {{system}} = what was installed. Review buttons are added under it automatically.">
+          <Textarea rows={8} value={f.thankYouBody} onChange={(e) => set("thankYouBody", e.target.value)} />
+        </Field>
+        <Field label="Text message" hint="{{reviewLink}} = your first review link above. Keep it short.">
+          <Textarea rows={3} value={f.thankYouSms} onChange={(e) => set("thankYouSms", e.target.value)} />
+        </Field>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => { saveSettings(f); setSaved(true); }}>Save</Button>
+          {saved && <span className="text-sm font-medium text-emerald-700">Saved - the whole team now uses this.</span>}
+        </div>
       </Card>
     </>
   );

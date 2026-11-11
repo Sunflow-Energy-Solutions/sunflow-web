@@ -122,7 +122,11 @@ export type Deal = {
   site?: SiteDetails;
   install?: InstallRecord;
   checklist?: CheckItem[];
+  /** Template keys the team removed from this job, so a system change doesn't add them back */
+  checklistSkipped?: string[];
   xero?: XeroInvoice[];
+  /** When a thank-you / review request went to the customer, and how */
+  thanks?: { sentAt: string; by: string; channels: ("email" | "sms")[] } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -195,6 +199,8 @@ export type FileRec = {
   id: string;
   customerId: string;
   dealId: string | null;
+  /** Checklist item (CheckItem.id) this file is proof for, e.g. the certificate for "CES lodged" */
+  checkId?: string | null;
   name: string;
   /** Path inside the private Supabase storage bucket */
   path: string;
@@ -206,7 +212,38 @@ export type FileRec = {
   updatedAt: string;
 };
 
-export type Kind = "customer" | "deal" | "task" | "note" | "campaign" | "staff" | "file";
+/** Business-wide settings: review links and the thank-you message wording. One record, edited by admins. */
+export type AppSettings = {
+  id: string;
+  googleReviewUrl: string;
+  facebookReviewUrl: string;
+  otherReviewLabel: string;
+  otherReviewUrl: string;
+  thankYouSubject: string;
+  thankYouBody: string;
+  thankYouSms: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const SETTINGS_ID = "app-settings";
+
+export const defaultSettings = (): AppSettings => ({
+  id: SETTINGS_ID,
+  googleReviewUrl: "",
+  facebookReviewUrl: "",
+  otherReviewLabel: "",
+  otherReviewUrl: "",
+  thankYouSubject: "Thank you from Sunflow, {{firstName}}!",
+  thankYouBody:
+    "Hi {{firstName}},\n\nThank you for choosing Sunflow Energy Solutions for your {{system}}. We hope you are loving it!\n\nIf you are happy with our work, a short review would mean a lot to our small team and helps other households find us. It takes about a minute.\n\nIf anything is not right, just reply to this email or call us on (03) 9088 0322 and we will sort it out.\n\nThanks again,\nThe Sunflow team",
+  thankYouSms:
+    "Hi {{firstName}}, thanks for choosing Sunflow Energy Solutions! If you are happy with your {{system}}, a quick review would mean a lot: {{reviewLink}} Any issues, call us on (03) 9088 0322.",
+  createdAt: "",
+  updatedAt: "",
+});
+
+export type Kind = "customer" | "deal" | "task" | "note" | "campaign" | "staff" | "file" | "setting";
 
 export type Db = {
   customers: Customer[];
@@ -216,9 +253,10 @@ export type Db = {
   campaigns: Campaign[];
   staff: Staff[];
   files: FileRec[];
+  settings: AppSettings[];
 };
 
-export const emptyDb = (): Db => ({ customers: [], deals: [], tasks: [], notes: [], campaigns: [], staff: [], files: [] });
+export const emptyDb = (): Db => ({ customers: [], deals: [], tasks: [], notes: [], campaigns: [], staff: [], files: [], settings: [] });
 
 export const emptySystem = (): SystemChoice => ({
   solarKw: null, panelBrand: "", batteryKwh: null, batteryBrand: "", inverterBrand: "", evCharger: "",

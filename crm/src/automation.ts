@@ -28,6 +28,7 @@ const RULES: Partial<Record<Stage, Rule[]>> = {
     { kind: "email", due: () => addMonths(6), note: () => "6 month re-contact: send a current special" },
   ],
   installed: [
+    { kind: "email", due: () => addDays(1), note: () => "Send the thank-you and review request" },
     { kind: "call", due: () => addDays(14), note: () => "Post-install check-in: system working well? Ask for a Google review / referral" },
     { kind: "checkup", due: () => addMonths(12), note: () => "12 month system check-up call" },
   ],
