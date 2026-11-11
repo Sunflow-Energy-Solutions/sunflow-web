@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { env, sb } from "./_lib";
+import { env, sb } from "./_lib.js";
 
 /** Shared Xero helpers (standard OAuth 2.0). Tokens live in the private_settings table, readable only with the service-role key. */
 

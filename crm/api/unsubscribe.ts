@@ -1,4 +1,4 @@
-import { BUSINESS, env, escapeHtml, serviceHeaders, verify } from "./_lib";
+import { BUSINESS, env, escapeHtml, serviceHeaders, verify } from "./_lib.js";
 
 const page = (title: string, message: string, form?: { id: string; sig: string }) =>
   new Response(

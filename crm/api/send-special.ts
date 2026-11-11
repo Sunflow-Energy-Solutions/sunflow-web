@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { BUSINESS, env, escapeHtml, isAdmin, json, requireStaff, sign } from "./_lib";
+import { BUSINESS, env, escapeHtml, isAdmin, json, requireStaff, sign } from "./_lib.js";
 
 type Recipient = { id: string; email: string; firstName: string };
 const MAX_RECIPIENTS = 500;

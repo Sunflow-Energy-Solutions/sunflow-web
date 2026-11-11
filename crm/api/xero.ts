@@ -1,7 +1,7 @@
-import { env, isAdmin, json, requireStaff, sb } from "./_lib";
+import { env, isAdmin, json, requireStaff, sb } from "./_lib.js";
 import {
   AUTHORIZE, SCOPES, accessToken, configured, findOrCreateContact, loadTokens, redirectUri, stateFor, xero, type ContactIn,
-} from "./_xero";
+} from "./_xero.js";
 
 /**
  * Xero actions for the CRM: status, connect, disconnect and create-draft-invoice.

@@ -1,5 +1,5 @@
-import { env } from "./_lib";
-import { exchange, saveTokens, validState } from "./_xero";
+import { env } from "./_lib.js";
+import { exchange, saveTokens, validState } from "./_xero.js";
 
 /** Xero sends the admin back here after they approve access. */
 export async function GET(request: Request): Promise<Response> {
