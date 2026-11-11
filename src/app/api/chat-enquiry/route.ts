@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
+import { pushLeadToCrm } from "@/lib/crm";
 
 function clean(value: unknown, max: number): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
         .map((t) => t.slice(0, 300))
         .join("\n")
     : "";
+
+  await pushLeadToCrm({ name: cleanName, phone: cleanPhone, email: cleanEmail, source: "Website chat", notes: cleanMessage });
 
   try {
     await sendNotification({

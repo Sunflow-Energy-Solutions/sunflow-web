@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
+import { pushLeadToCrm } from "@/lib/crm";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { firstName, lastName, email, phone, street, suburb, state, postcode, notes, items, estimatedTotal } =
+  const { firstName, lastName, email, phone, street, suburb, state, postcode, notes, items, estimatedTotal, marketing } =
     body as Record<string, unknown>;
 
   if (
@@ -36,6 +37,12 @@ export async function POST(request: Request) {
         .filter(Boolean)
         .join("\n")
     : "";
+
+  await pushLeadToCrm({
+    name: `${firstName} ${lastName}`, phone, email, address: street, suburb, postcode,
+    services: ["EV charger"], notes: itemsSummary.split("\n").join(", "), source: "Website EV charger shop",
+    marketingConsent: marketing === true,
+  });
 
   try {
     await sendNotification({

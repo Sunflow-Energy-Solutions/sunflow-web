@@ -51,6 +51,7 @@ export default function QuoteRequestPage() {
           state: data.get("state"),
           postcode: data.get("postcode"),
           notes: data.get("notes"),
+          marketing: data.get("marketing") === "on",
           items: items.map(({ product, quantity }) => ({ name: product.name, quantity })),
           estimatedTotal: formatPrice(total),
         }),
@@ -216,6 +217,10 @@ export default function QuoteRequestPage() {
             reviewed your installation address.
           </p>
           {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+          <label className="mt-4 flex items-start gap-3 text-sm text-mist-500">
+            <input type="checkbox" name="marketing" className="mt-0.5 h-4 w-4 accent-solar-600" />
+            <span>Yes, email me occasional Sunflow offers and updates. I can unsubscribe at any time.</span>
+          </label>
           <Button type="submit" disabled={submitting} size="lg" className="mt-4 w-full justify-center">
             {submitting ? "Submitting..." : "Submit Quote Request"}
           </Button>

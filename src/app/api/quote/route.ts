@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
+import { pushLeadToCrm } from "@/lib/crm";
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024; // stay under Vercel's serverless request body limit
 
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { name, phone, email, address, services, notes, attachment } = body as Record<string, unknown>;
+  const { name, phone, email, address, services, notes, attachment, marketing } = body as Record<string, unknown>;
 
   if (
     typeof name !== "string" || !name.trim() ||
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
       }
     }
   }
+
+  await pushLeadToCrm({
+    name, phone, email, address, source: "Website quote form",
+    services: Array.isArray(services) ? services.filter((s): s is string => typeof s === "string") : [],
+    notes: typeof notes === "string" ? notes : "", marketingConsent: marketing === true,
+  });
 
   try {
     await sendNotification({

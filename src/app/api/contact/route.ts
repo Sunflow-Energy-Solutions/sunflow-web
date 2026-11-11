@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendNotification } from "@/lib/resend";
 import { renderEmailRows } from "@/lib/email-templates";
+import { pushLeadToCrm } from "@/lib/crm";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -18,6 +19,11 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  await pushLeadToCrm({
+    name, phone: typeof phone === "string" ? phone : "", email, source: "Website contact form",
+    notes: typeof subject === "string" && subject ? `${subject}: ${message}` : message,
+  });
 
   try {
     await sendNotification({

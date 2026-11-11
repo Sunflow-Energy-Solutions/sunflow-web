@@ -71,6 +71,7 @@ export default function QuoteForm() {
           address: data.get("address"),
           services: selectedServices,
           notes: data.get("notes"),
+          marketing: data.get("marketing") === "on",
           attachment,
         }),
       });
@@ -197,6 +198,11 @@ export default function QuoteForm() {
           className="mt-3 w-full resize-none rounded-xl border border-mist-200 px-4 py-2.5 text-sm outline-none focus:border-solar-500"
         />
       </fieldset>
+
+      <label className="mt-6 flex items-start gap-3 text-sm text-mist-500">
+        <input type="checkbox" name="marketing" className="mt-0.5 h-4 w-4 accent-solar-600" />
+        <span>Yes, email me occasional Sunflow offers and updates. I can unsubscribe at any time.</span>
+      </label>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={submitting} size="lg" className="mt-8 w-full justify-center" icon={<Send className="h-4 w-4" />}>

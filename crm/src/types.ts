@@ -1,0 +1,234 @@
+export type Stage =
+  | "new" | "contacted" | "assessment" | "quoted" | "negotiating" | "won" | "installed" | "lost";
+
+export const STAGES: { id: Stage; label: string; hint: string }[] = [
+  { id: "new", label: "New lead", hint: "Enquiry received" },
+  { id: "contacted", label: "Contacted", hint: "We have spoken" },
+  { id: "assessment", label: "Site visit", hint: "Assessment booked / done" },
+  { id: "quoted", label: "Quote sent", hint: "Waiting on customer" },
+  { id: "negotiating", label: "Negotiating", hint: "Close to a decision" },
+  { id: "won", label: "Won", hint: "Deal accepted - install to book" },
+  { id: "installed", label: "Installed", hint: "System is live" },
+  { id: "lost", label: "Lost", hint: "No deal (for now)" },
+];
+
+export const stageLabel = (s: Stage) => STAGES.find((x) => x.id === s)?.label ?? s;
+
+export type Customer = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  address: string;
+  suburb: string;
+  postcode: string;
+  kind: "Residential" | "Commercial";
+  source: string;
+  notes: string;
+  /** Staff member (Staff.id) looking after this customer */
+  assignedTo?: string;
+  /** Customer has agreed to receive marketing (Spam Act). Specials only go to these. */
+  marketingConsent: boolean;
+  unsubscribed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SystemChoice = {
+  solarKw: number | null;
+  panelBrand: string;
+  batteryKwh: number | null;
+  batteryBrand: string;
+  inverterBrand: string;
+  evCharger: string;
+};
+
+export type SiteDetails = {
+  distributor: string; // network the home connects to (AusNet, CitiPower...)
+  nmi: string;
+  meterNumber: string;
+  retailer: string;
+  phase: "" | "Single" | "Three";
+  roofType: string;
+  existingSystem: string;
+  switchboardNotes: string;
+};
+
+export const emptySite = (): SiteDetails => ({
+  distributor: "", nmi: "", meterNumber: "", retailer: "", phase: "", roofType: "", existingSystem: "", switchboardNotes: "",
+});
+
+/** What was actually installed: kept for warranty claims and compliance. */
+export type InstallRecord = {
+  panelModel: string;
+  panelCount: number | null;
+  panelSerials: string;
+  inverterModel: string;
+  inverterSerial: string;
+  batteryModel: string;
+  batterySerial: string;
+  evChargerSerial: string;
+  installer: string; // licensed electrician
+  cesNumber: string;
+  gridApprovalRef: string;
+  warrantyYears: number | null;
+};
+
+export const emptyInstall = (): InstallRecord => ({
+  panelModel: "", panelCount: null, panelSerials: "", inverterModel: "", inverterSerial: "", batteryModel: "",
+  batterySerial: "", evChargerSerial: "", installer: "", cesNumber: "", gridApprovalRef: "", warrantyYears: null,
+});
+
+export type CheckItem = {
+  id: string;
+  /** Template key, so system changes can add new items without duplicating ticked ones. Empty for custom items. */
+  key: string;
+  group: string;
+  label: string;
+  required: boolean;
+  done: boolean;
+  doneAt: string | null;
+  doneBy: string;
+};
+
+export type XeroInvoice = { invoiceId: string; amount: number; createdAt: string; url: string };
+
+export type Quote = {
+  id: string;
+  number: string;
+  date: string;
+  amount: number | null;
+  summary: string;
+  status: "sent" | "accepted" | "declined" | "expired";
+};
+
+export type Deal = {
+  id: string;
+  customerId: string;
+  title: string;
+  stage: Stage;
+  system: SystemChoice;
+  quotes: Quote[];
+  /** Agreed contract price once won, otherwise latest quote */
+  value: number | null;
+  installDate: string | null;
+  /** How many days the install takes (default 1). Shown as a block on the calendar. */
+  installDays?: number | null;
+  installedOn: string | null;
+  lostReason: string;
+  /** Link to this job's project in Pylon, pasted in once the design has been started */
+  pylonUrl?: string;
+  site?: SiteDetails;
+  install?: InstallRecord;
+  checklist?: CheckItem[];
+  xero?: XeroInvoice[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TaskKind = "call" | "email" | "visit" | "quote" | "install" | "checkup" | "upgrade" | "other";
+
+export const TASK_KINDS: { id: TaskKind; label: string }[] = [
+  { id: "call", label: "Call" },
+  { id: "email", label: "Email" },
+  { id: "visit", label: "Site visit" },
+  { id: "quote", label: "Send quote" },
+  { id: "install", label: "Installation" },
+  { id: "checkup", label: "Check-up" },
+  { id: "upgrade", label: "Upgrade check" },
+  { id: "other", label: "Other" },
+];
+
+export type Task = {
+  id: string;
+  customerId: string;
+  dealId: string | null;
+  kind: TaskKind;
+  due: string; // yyyy-mm-dd
+  /** Optional time of day, HH:MM (24h), for appointments such as site visits */
+  time?: string;
+  note: string;
+  done: boolean;
+  doneAt: string | null;
+  /** Created by an automation rather than typed in */
+  auto: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Note = {
+  id: string;
+  customerId: string;
+  dealId: string | null;
+  kind: "note" | "call" | "email" | "visit" | "system";
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Campaign = {
+  id: string;
+  subject: string;
+  body: string;
+  audience: string;
+  recipients: number;
+  sentAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Staff = {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "staff";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const FILE_CATEGORIES = [
+  "Site photo", "Install photo", "Electricity bill", "Quote / contract", "Approval", "Certificate", "Warranty", "Other",
+];
+
+export type FileRec = {
+  id: string;
+  customerId: string;
+  dealId: string | null;
+  name: string;
+  /** Path inside the private Supabase storage bucket */
+  path: string;
+  mime: string;
+  size: number;
+  category: string;
+  by: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Kind = "customer" | "deal" | "task" | "note" | "campaign" | "staff" | "file";
+
+export type Db = {
+  customers: Customer[];
+  deals: Deal[];
+  tasks: Task[];
+  notes: Note[];
+  campaigns: Campaign[];
+  staff: Staff[];
+  files: FileRec[];
+};
+
+export const emptyDb = (): Db => ({ customers: [], deals: [], tasks: [], notes: [], campaigns: [], staff: [], files: [] });
+
+export const emptySystem = (): SystemChoice => ({
+  solarKw: null, panelBrand: "", batteryKwh: null, batteryBrand: "", inverterBrand: "", evCharger: "",
+});
+
+export const SOURCES = [
+  "Website quote form", "Phone call", "Referral", "Facebook / Instagram", "Google",
+  "Door knock / event", "Repeat customer", "Other",
+];
+
+export const BRANDS = {
+  inverter: ["AlphaESS", "FoxESS", "GoodWe", "Growatt", "Sigenergy", "Sungrow", "Other"],
+};
