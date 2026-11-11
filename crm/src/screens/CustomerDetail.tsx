@@ -1,5 +1,5 @@
 import { ArrowLeft, CalendarPlus, ExternalLink, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Checklist from "../components/Checklist";
 import Files from "../components/Files";
 import { ThankYouSheet } from "../components/ThankYou";
@@ -192,6 +192,11 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
   const [lost, setLost] = useState(false);
   const [xeroOpen, setXeroOpen] = useState(false);
   const [thanksOpen, setThanksOpen] = useState(false);
+  const { refreshChecklist } = useStore();
+  // Jobs won outside the app (e.g. a customer e-signs in Pylon) arrive without a checklist: set it up when the job is opened.
+  useEffect(() => {
+    refreshChecklist(deal.id);
+  }, [deal.id, deal.stage, deal.system.solarKw, deal.system.batteryKwh, deal.system.evCharger, refreshChecklist]);
   const xeroStatus = useXeroStatus();
   const invoiced = (deal.xero ?? []).reduce((n, x) => n + x.amount, 0);
 
@@ -249,6 +254,12 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
             </li>
           ))}
         </ul>
+      )}
+
+      {deal.pylon && (
+        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+          Customer signed this design in Pylon on {fmtDate(deal.pylon.signedAt)} - details above came from the signed proposal.
+        </p>
       )}
 
       {(deal.site || deal.install) && <SiteSummary deal={deal} />}

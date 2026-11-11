@@ -31,9 +31,13 @@ It is separate from the public website: it lives in this `crm/` folder and is de
 - **Upgrade finder**: installed customers with solar but no battery, no EV charger, a small system, or a system 5+ years old.
 - **Email specials** (admins): pick a group, write or pick a template, send a test, then send. Only customers ticked
   "OK to email specials" receive it, and every email carries an unsubscribe link.
-- **Pylon**: "Design in Pylon" opens Pylon at the customer's address with name, email and phone filled in.
+- **Pylon**: "Design in Pylon" opens Pylon at the customer's address with name, email and phone filled in. When the customer **e-signs a
+  proposal in Pylon**, the job in the CRM is filled from that signed design (system size, panel / inverter / battery, price, quote marked
+  accepted), moved to Won, its reminders and checklist set up, and the Pylon link saved. Designs that are only sent never reach the CRM, so
+  you can send as many options as you like. Needs Pylon API access (see "Pylon -> CRM" below).
 - **Xero**: when a job is Won, create a **draft** invoice (deposit or full) in Xero in one tap. Nothing is sent or approved automatically.
-- **Website enquiries become customers automatically** (quote form, EV shop, contact form, chat) with a "call today" reminder.
+- **Enquiries become customers automatically**, from the website forms and chat, Facebook / Instagram lead ads, Google lead forms or any
+  other source (see "Online ads -> CRM"), each with a "call today" reminder and the campaign recorded.
 - Works offline; changes upload when the phone is back in range. CSV export, backup/restore, CSV import.
 
 ## Roles
@@ -95,7 +99,31 @@ out and the website behaves exactly as before. The quote and EV forms have an un
 5. Check Xero's current developer pricing tier for a single connected business before relying on it.
 6. **First time:** create one test invoice and have your bookkeeper confirm the account code, GST treatment and how rebates/STCs should appear.
 
-### 5. Put it on each phone
+### 5. Online ads -> CRM (optional)
+The CRM accepts leads from any tool that can send a web request, so Facebook / Instagram lead ads, Google lead forms and landing pages all
+land as a New lead with a call-today reminder. Repeat enquiries with the same email attach to the existing customer.
+1. In the CRM's Vercel project add `LEAD_WEBHOOK_SECRET` (any long random text, mark it Secret) and redeploy.
+2. **Facebook / Instagram lead ads** (simplest route): in Make.com or Zapier, trigger "New lead in Facebook Lead Ads", then an HTTP / Webhooks
+   action: `POST https://<CRM address>/api/lead`, header `x-api-key: <your secret>`, body type JSON, and map the lead form fields
+   (full name, email, phone, suburb / postcode, what they are interested in, campaign / form name). Field names are matched loosely
+   (`full_name`, `phone_number`, `city`, `zip_code`, `campaign_name`...). Set `source` to "Facebook lead ad".
+3. Add `"marketing_consent": "yes"` only if the lead form has a clear opt-in to marketing emails; otherwise leave it out.
+4. Test with a real test lead from Facebook's Lead Ads Testing Tool: it should appear in the CRM within a minute.
+(A direct Meta integration without Make / Zapier is possible later but needs a Meta developer app and app review.)
+
+### 6. Pylon -> CRM (optional; needs Pylon API access)
+1. In Pylon: **Settings -> API** (app.getpylon.com/settings/api). If the page is missing or locked, ask Pylon support to enable API access.
+2. Create an API token that can read projects and designs, and add it to the CRM's Vercel project as `PYLON_API_TOKEN` (Secret).
+3. Create a **Webhook destination** with URL `https://<CRM address>/api/pylon-webhook` and the events `web_proposals.signed`
+   (customer e-signed a proposal) and, if you take deposits through Pylon, `gateway_payments.created`.
+4. Pylon shows a secret for the destination: add it as `PYLON_WEBHOOK_SECRET` (Secret) and redeploy the CRM.
+5. How it fits together: staff click **Design in Pylon** on a job (the job's id travels to Pylon as the project's reference number), build and
+   send as many designs as needed, and only when the customer **signs** does the CRM update that job from the signed design.
+   If the reference is missing the CRM falls back to matching the customer's email, and if nobody matches it creates the customer.
+6. Pylon's delivery log (in the same API settings) shows whether each event reached the CRM; failures are retried for about 31 hours.
+Prices come across exactly as Pylon states them on the proposal; check GST treatment against your first real signed job.
+
+### 7. Put it on each phone
 Open the CRM address, sign in, then iPhone: Safari -> Share -> **Add to Home Screen**. Android: Chrome -> menu -> **Install app**.
 
 ## Privacy and the Spam Act

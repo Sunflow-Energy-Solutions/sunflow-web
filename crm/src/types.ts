@@ -124,6 +124,8 @@ export type Deal = {
   checklist?: CheckItem[];
   /** Template keys the team removed from this job, so a system change doesn't add them back */
   checklistSkipped?: string[];
+  /** Set when the customer e-signed a Pylon proposal: which design was signed, and when */
+  pylon?: { projectId: string; designId: string; signedAt: string };
   xero?: XeroInvoice[];
   /** When a thank-you / review request went to the customer, and how */
   thanks?: { sentAt: string; by: string; channels: ("email" | "sms")[] } | null;

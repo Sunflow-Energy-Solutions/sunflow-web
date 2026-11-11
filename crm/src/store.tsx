@@ -80,6 +80,8 @@ type Store = {
   removeCheckItem: (dealId: string, itemId: string) => void;
   /** Add a standard checklist item that isn't on this job (it was skipped or doesn't apply by default) */
   addTemplateItem: (dealId: string, key: string) => void;
+  /** For jobs in progress: start the checklist if missing, and add steps made relevant by a changed system (e.g. a signed Pylon design) */
+  refreshChecklist: (dealId: string) => void;
   /** Record that a thank-you / review request was sent */
   markThanks: (dealId: string, channels: ("email" | "sms")[]) => void;
   importAll: (data: Db) => void;
@@ -377,6 +379,14 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
         updatedAt: stamp(),
       });
     };
+    const refreshChecklist: Store["refreshChecklist"] = (dealId) => {
+      const d = find("deals", dealId) as Deal | undefined;
+      if (!d || (d.stage !== "won" && d.stage !== "installed")) return;
+      // Old installed jobs without a checklist stay as they are; only jobs still in progress get one started.
+      if (!d.checklist && d.stage !== "won") return;
+      const next = d.checklist ? syncChecklist(d) : buildChecklist(d);
+      if (next && next.length !== (d.checklist?.length ?? -1)) commit("deals", { ...d, checklist: next, updatedAt: stamp() });
+    };
     const markThanks: Store["markThanks"] = (dealId, channels) => {
       const d = find("deals", dealId) as Deal | undefined;
       if (!d) return;
@@ -412,7 +422,7 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       addCustomer, updateCustomer, deleteCustomer, addDeal, updateDeal, moveDeal, deleteDeal,
       addTask, updateTask, completeTask, deleteTask, addNote, deleteNote, addCampaign, importAll,
       addStaff, updateStaff, deleteStaff, addFile, deleteFile, startChecklist, setCheck, addCheckItem, removeCheckItem,
-      addTemplateItem, markThanks, saveSettings, settings,
+      addTemplateItem, refreshChecklist, markThanks, saveSettings, settings,
     };
     // `find` reads from refs so it is stable; commit is stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
