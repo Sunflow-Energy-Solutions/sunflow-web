@@ -69,6 +69,12 @@ language sql stable security definer set search_path = public as $$
   )
 $$;
 
+-- These helpers are for signed-in staff only; anonymous visitors can't call them.
+revoke execute on function public.crm_role(), public.crm_staff_id(), public.crm_is_admin(), public.crm_sees_all(),
+                           public.crm_no_staff_yet(), public.crm_owns_customer(text) from public, anon;
+grant execute on function public.crm_role(), public.crm_staff_id(), public.crm_is_admin(), public.crm_sees_all(),
+                          public.crm_no_staff_yet(), public.crm_owns_customer(text) to authenticated;
+
 -- Replace the earlier "everyone signed in sees everything" policies.
 drop policy if exists "staff read" on public.records;
 drop policy if exists "staff insert" on public.records;
