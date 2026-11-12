@@ -1,5 +1,5 @@
 import { env, json } from "./_lib.js";
-import { findCustomerByEmail, melbourneToday, newCustomer, newDeal, newNote, newTask, row, saveRows, safeEqual, type Rec, type Row } from "./_records.js";
+import { findCustomerByEmail, melbourneToday, newCustomer, newDeal, newNote, newTask, ownerOf, row, saveRows, safeEqual, type Rec, type Row } from "./_records.js";
 
 /**
  * Inbound leads from anywhere that can send a web request: Facebook / Instagram lead ads (through Make or Zapier),
@@ -67,7 +67,9 @@ async function handle(request: Request): Promise<Response> {
 
   const existing = await findCustomerByEmail(email);
   const rows: Row[] = [];
-  const save = (kind: string, data: Rec) => rows.push(row(kind, data));
+  // Rows belong to whoever looks after the customer: a repeat enquiry from an assigned customer goes straight to them;
+  // a brand-new lead has no owner yet and waits for an admin to assign it.
+  const save = (kind: string, data: Rec) => rows.push(row(kind, data, false, ownerOf(customer ?? existing)));
 
   let customer: Rec;
   if (existing) {

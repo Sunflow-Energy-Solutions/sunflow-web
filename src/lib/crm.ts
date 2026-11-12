@@ -56,7 +56,7 @@ function channelOf(a: Att): { channel: string; campaign: string } {
   return { channel: "Website (direct)", campaign: "" };
 }
 
-type Row = { id: string; kind: string; data: Record<string, unknown>; deleted: boolean; updated_at: string };
+type Row = { id: string; kind: string; data: Record<string, unknown>; deleted: boolean; updated_at: string; owner: string | null };
 
 const melbourneToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne" }).format(new Date());
 
@@ -98,8 +98,11 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
     const parsed = lead.suburb || lead.postcode ? { street: lead.address ?? "", suburb: lead.suburb ?? "", state: lead.state ?? "", postcode: lead.postcode ?? "" } : splitAddress(lead.address ?? "");
     const [firstName, ...rest] = lead.name.trim().split(/\s+/);
     const rows: Row[] = [];
+    // A repeat enquiry from a customer who is already assigned goes straight to whoever looks after them (the database only
+    // shows records to their owner and to admins); a brand-new lead has no owner and waits for an admin to assign it.
+    const owner = existing?.assignedTo ? String(existing.assignedTo) : null;
     const upsert = (kind: string, data: Record<string, unknown>) =>
-      rows.push({ id: String(data.id), kind, data, deleted: false, updated_at: now });
+      rows.push({ id: String(data.id), kind, data, deleted: false, updated_at: now, owner });
 
     let customerId: string;
     if (existing) {
@@ -148,11 +151,11 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       createdAt: now, updatedAt: now,
     });
 
-    const res = await fetch(`${base}/rest/v1/records`, {
-      method: "POST",
-      headers: { ...headers, Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify(rows),
-    });
+    const post = (body: unknown) =>
+      fetch(`${base}/rest/v1/records`, { method: "POST", headers: { ...headers, Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(body) });
+    let res = await post(rows);
+    // The CRM database update that adds the owner column hasn't been run yet: save without it rather than lose the lead.
+    if (!res.ok && /owner/i.test(await res.clone().text())) res = await post(rows.map((r) => { const c: Record<string, unknown> = { ...r }; delete c.owner; return c; }));
     if (!res.ok) console.error("CRM lead save failed", res.status, await res.text());
   } catch (error) {
     console.error("CRM lead save failed", error);

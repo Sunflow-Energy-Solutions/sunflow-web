@@ -187,7 +187,7 @@ const Row = ({ k, v }: { k: string; v: string }) => (
 );
 
 function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; customer: Customer; onEdit: () => void; onQuote: () => void; onTask: () => void }) {
-  const { moveDeal, deleteDeal, updateDeal, addNote } = useStore();
+  const { moveDeal, deleteDeal, updateDeal, addNote, me } = useStore();
   const pylon = pylonLink(customer, deal);
   const [lost, setLost] = useState(false);
   const [xeroOpen, setXeroOpen] = useState(false);
@@ -208,7 +208,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
       if (left.length && !confirm(`${left.length} required paperwork item${left.length > 1 ? "s are" : " is"} not ticked yet:\n\n- ${left.slice(0, 6).map((i) => i.label).join("\n- ")}${left.length > 6 ? "\n- ..." : ""}\n\nMark as installed anyway?`)) return;
     }
     moveDeal(deal.id, stage);
-    if (stage === "won" && xeroStatus.connected && deal.value) setXeroOpen(true);
+    if (stage === "won" && xeroStatus.connected && !me.isLimited && deal.value) setXeroOpen(true);
     if (stage === "installed" && !deal.thanks) setThanksOpen(true);
   }
 
@@ -265,7 +265,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
 
       {(deal.site || deal.install) && <SiteSummary deal={deal} />}
 
-      {["won", "installed"].includes(deal.stage) && xeroStatus.connected && (
+      {["won", "installed"].includes(deal.stage) && xeroStatus.connected && !me.isLimited && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-mist-50 px-3 py-2.5 text-sm">
           <span className="flex-1 text-mist-500">
             {deal.xero?.length ? <>Xero drafts: <b className="text-navy-900">{fmtMoney(invoiced)}</b> of {fmtMoney(deal.value)}</> : "No Xero invoice yet"}

@@ -1,4 +1,4 @@
-import { env, isAdmin, json, requireStaff, sb } from "./_lib.js";
+import { env, isAdmin, json, requireStaff, sb, staffRole } from "./_lib.js";
 import {
   AUTHORIZE, SCOPES, accessToken, configured, findOrCreateContact, loadTokens, redirectUri, stateFor, xero, type ContactIn,
 } from "./_xero.js";
@@ -36,6 +36,8 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (body.action === "invoice") {
+      // Invoices are created from details the app sends, so limited logins aren't allowed to (they could invoice any contact).
+      if ((await staffRole(staff.email)).role === "limited") return json({ error: "Ask an admin to create the invoice." }, 403);
       const auth = await accessToken();
       if (!auth) return json({ error: "Xero isn't connected. An admin can connect it in More." }, 400);
       const contact = body.contact as ContactIn | undefined;

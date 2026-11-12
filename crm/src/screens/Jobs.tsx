@@ -31,7 +31,7 @@ export function JobsProgress() {
     <>
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm text-mist-500">{active.length} job{active.length === 1 ? "" : "s"} in progress</p>
-        {me.staffId && (
+        {me.staffId && !me.isLimited && (
           <button onClick={() => setMine(!mine)} className={clsx("min-h-9 rounded-full border px-3.5 text-sm font-semibold", mine ? "border-solar-600 bg-solar-500 text-navy-900" : "border-mist-200 bg-white text-mist-500")}>Only mine</button>
         )}
       </div>

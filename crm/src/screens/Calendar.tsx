@@ -78,7 +78,7 @@ export default function Calendar() {
         {([["all", "Everything"], ["install", "Installs"], ["visit", "Site visits"], ["followup", "Follow-ups"]] as [Filter, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setFilter(id)} className={clsx("min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold", filter === id ? "border-navy-900 bg-navy-900 text-white" : "border-mist-200 bg-white text-mist-500")}>{label}</button>
         ))}
-        {me.staffId && (
+        {me.staffId && !me.isLimited && (
           <button onClick={() => setMine(!mine)} className={clsx("min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold", mine ? "border-solar-600 bg-solar-500 text-navy-900" : "border-mist-200 bg-white text-mist-500")}>Only mine</button>
         )}
       </div>

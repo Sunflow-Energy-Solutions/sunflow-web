@@ -10,6 +10,7 @@ import { fullName } from "../utils";
 export default function Customers() {
   const { db, me } = useStore();
   const [mine, setMine] = useState(false);
+  const [unassigned, setUnassigned] = useState(false);
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<Stage | "all">("all");
   const dq = useDeferredValue(q);
@@ -27,13 +28,15 @@ export default function Customers() {
       .filter((c) => {
         const deals = dealsBy.get(c.id) ?? [];
         if (mine && c.assignedTo !== me.staffId) return false;
+        if (unassigned && c.assignedTo) return false;
         if (stage !== "all" && !deals.some((d) => d.stage === stage)) return false;
         if (!needle) return true;
         const hay = [fullName(c), c.email, c.suburb, c.address, c.postcode, ...deals.map((d) => `${d.title} ${d.system.panelBrand} ${d.system.batteryBrand} ${d.system.inverterBrand}`)].join(" ").toLowerCase();
         return hay.includes(needle) || (digits.length >= 3 && c.phone.replace(/\D/g, "").includes(digits));
       })
       .sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  }, [db.customers, dealsBy, dq, stage, mine, me.staffId]);
+  }, [db.customers, dealsBy, dq, stage, mine, unassigned, me.staffId]);
+  const unassignedCount = db.customers.filter((c) => !c.assignedTo).length;
 
   return (
     <>
@@ -50,7 +53,12 @@ export default function Customers() {
           />
         </div>
         <div className="-mx-4 mt-2.5 flex gap-2 overflow-x-auto px-4 pb-1">
-          {me.staffId && (
+          {!me.isLimited && unassignedCount > 0 && (
+            <button onClick={() => setUnassigned(!unassigned)} className={clsx("min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold", unassigned ? "border-amber-500 bg-amber-100 text-amber-900" : "border-amber-200 bg-white text-amber-800")}>
+              Unassigned ({unassignedCount})
+            </button>
+          )}
+          {me.staffId && !me.isLimited && (
             <button onClick={() => setMine(!mine)} className={clsx("min-h-9 shrink-0 rounded-full border px-3.5 text-sm font-semibold", mine ? "border-solar-600 bg-solar-500 text-navy-900" : "border-mist-200 bg-white text-mist-500")}>
               My customers
             </button>

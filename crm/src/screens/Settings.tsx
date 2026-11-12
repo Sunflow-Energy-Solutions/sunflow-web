@@ -7,7 +7,7 @@ import PylonImport from "./PylonImport";
 import { cloudEnabled, supabase } from "../cloud";
 import { demoData } from "../demo";
 import { useStore } from "../store";
-import { AU_STATES, emptyDb, stageLabel, type Db } from "../types";
+import { AU_STATES, emptyDb, stageLabel, type Db, type Staff } from "../types";
 import { csvEscape, download, fmtDate, fullName, nowIso, systemSummary, today, uid } from "../utils";
 
 function parseCsv(text: string): string[][] {
@@ -228,6 +228,7 @@ function TeamSection() {
   const { db, me, addStaff, updateStaff, deleteStaff } = useStore();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [newRole, setNewRole] = useState<Staff["role"]>("limited");
 
   if (!cloudEnabled) {
     return (
@@ -256,12 +257,13 @@ function TeamSection() {
             <Select
               value={s.role}
               disabled={s.email === me.email}
-              onChange={(e) => updateStaff(s.id, { role: e.target.value as "admin" | "staff" })}
-              className="w-28"
+              onChange={(e) => updateStaff(s.id, { role: e.target.value as Staff["role"] })}
+              className="w-44"
               aria-label={`Role for ${s.name}`}
             >
               <option value="admin">Admin</option>
-              <option value="staff">Staff</option>
+              <option value="staff">Staff (sees all)</option>
+              <option value="limited">Limited (own only)</option>
             </Select>
             {s.email !== me.email && (
               <button onClick={() => confirm(`Remove ${s.name} from the team list? Also remove their login in Supabase to stop them signing in.`) && deleteStaff(s.id)} aria-label={`Remove ${s.name}`} className="grid size-9 place-items-center rounded-full text-mist-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="size-4" /></button>
@@ -270,14 +272,23 @@ function TeamSection() {
         ))}
         <div className="space-y-2 p-3">
           <p className="text-xs text-mist-500">
-            <b>Admin</b> can send specials, connect Xero, delete customers, export and manage the team. <b>Staff</b> can do everything else. Everyone sees every customer.
-            People appear here automatically the first time they sign in; to add someone before then, enter the same email you gave them in Supabase.
+            <b>Admin</b>: everything - specials, Xero, Pylon import, assigning leads, delete, export, the team. <b>Staff</b>: sees every customer and works on them,
+            but can't change the team, send specials or connect other systems. <b>Limited</b>: sees <b>only the customers assigned to them</b> (with their jobs, follow-ups,
+            photos and documents) - this is enforced by the database, not just hidden on screen. New leads stay unassigned until an admin gives them to someone.
+            People appear here automatically the first time they sign in, as <b>Limited</b>; to choose their role first, add them here with the same email you gave them in Supabase.
           </p>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
             <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoCapitalize="off" /></Field>
           </div>
-          <Button size="sm" variant="soft" disabled={!email.includes("@")} onClick={() => { addStaff({ name, email, role: "staff" }); setName(""); setEmail(""); }}>Add team member</Button>
+          <Field label="Role">
+            <Select value={newRole} onChange={(e) => setNewRole(e.target.value as Staff["role"])}>
+              <option value="limited">Limited - sees only their own customers</option>
+              <option value="staff">Staff - sees every customer</option>
+              <option value="admin">Admin</option>
+            </Select>
+          </Field>
+          <Button size="sm" variant="soft" disabled={!email.includes("@")} onClick={() => { addStaff({ name, email, role: newRole }); setName(""); setEmail(""); }}>Add team member</Button>
         </div>
       </Card>
     </>

@@ -150,7 +150,7 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
           </div>
         )}
 
-        {db.staff.length > 0 && (
+        {db.staff.length > 0 && !me.isLimited && (
           <Field label="Looked after by">
             <Select value={f.assignedTo} onChange={(e) => set("assignedTo", e.target.value)}>
               <option value="">Nobody yet</option>

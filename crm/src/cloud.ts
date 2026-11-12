@@ -9,7 +9,8 @@ export const cloudEnabled = !!(url && key);
 
 export const supabase: SupabaseClient | null = cloudEnabled ? createClient(url!, key!) : null;
 
-export type Row = { id: string; kind: Kind; data: Record<string, unknown>; deleted: boolean; updated_at: string };
+/** `owner` is the staff id looking after the record (null = unassigned). The database uses it to decide who may see the row. */
+export type Row = { id: string; kind: Kind; data: Record<string, unknown>; deleted: boolean; updated_at: string; owner?: string | null };
 
 export const COLLECTION_KIND: Record<keyof Db, Kind> = {
   customers: "customer",
@@ -24,8 +25,33 @@ export const COLLECTION_KIND: Record<keyof Db, Kind> = {
 
 export async function pushRows(rows: Row[]): Promise<void> {
   if (!supabase || rows.length === 0) return;
-  const { error } = await supabase.from("records").upsert(rows, { onConflict: "id" });
+  let { error } = await supabase.from("records").upsert(rows, { onConflict: "id" });
+  // The database update that adds the owner column hasn't been run yet: save without it rather than stop syncing.
+  if (error && /owner/i.test(error.message)) {
+    const plain = rows.map((r) => { const c: Record<string, unknown> = { ...r }; delete c.owner; return c; });
+    ({ error } = await supabase.from("records").upsert(plain, { onConflict: "id" }));
+  }
   if (error) throw new Error(error.message);
+}
+
+/** Ids of the customer-related records this login is allowed to see. Used to drop records that were reassigned to someone else. */
+export async function pullVisibleIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  if (!supabase) return ids;
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("records")
+      .select("id")
+      .in("kind", ["customer", "deal", "task", "note", "file"])
+      .eq("deleted", false)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    (data ?? []).forEach((r: { id: string }) => ids.add(r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return ids;
 }
 
 export async function pullRows(since: string | null): Promise<Row[]> {

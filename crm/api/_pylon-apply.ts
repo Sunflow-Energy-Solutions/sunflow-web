@@ -1,6 +1,6 @@
 import { brandOf, kwText, type PylonDesign, type PylonProject } from "./_pylon.js";
 import {
-  addDays, dealsFor, findCustomerByEmail, getRecord, melbourneToday, newCustomer, newDeal, newNote, newTask, nowIso, openAutoTasks, row, saveRows, type Rec, type Row,
+  addDays, dealsFor, findCustomerByEmail, getRecord, melbourneToday, newCustomer, newDeal, newNote, newTask, nowIso, openAutoTasks, ownerOf, row, saveRows, type Rec, type Row,
 } from "./_records.js";
 
 /** The deal this Pylon project belongs to: by reference_number (the deal id), else by the customer's email. */
@@ -61,7 +61,7 @@ export async function applySigned(o: {
       name: project.name || "Pylon customer", phone: project.phone, email: project.email || o.eventEmail || "",
       address: project.address, suburb: project.suburb, state: project.state, postcode: project.postcode, source: "Pylon",
     });
-    rows.push(row("customer", customer));
+    rows.push(row("customer", customer, false, ownerOf(customer)));
   } else {
     // fill gaps only; never overwrite what staff have typed
     const fill: Rec = {};
@@ -71,7 +71,7 @@ export async function applySigned(o: {
     if (!customer.suburb && project.suburb) fill.suburb = project.suburb;
     if (!customer.postcode && project.postcode) fill.postcode = project.postcode;
     if (!customer.state && project.state) fill.state = project.state;
-    if (Object.keys(fill).length) rows.push(row("customer", { ...customer, ...fill, updatedAt: t }));
+    if (Object.keys(fill).length) rows.push(row("customer", { ...customer, ...fill, updatedAt: t }, false, ownerOf(customer)));
   }
   if (!deal) deal = newDeal(String(customer.id), { stage: "new", source: createdNew ? "Pylon" : customer.source, campaign: "" });
 
@@ -96,15 +96,15 @@ export async function applySigned(o: {
     pylon: { projectId, designId, signedAt: o.signedAt || t },
     updatedAt: t,
   };
-  rows.push(row("deal", nextDeal));
+  rows.push(row("deal", nextDeal, false, ownerOf(customer)));
 
   // The stage rules for "Won": drop the old stage's open reminders and add the install-prep one.
   if (wasStage !== "won" && wasStage !== "installed") {
-    for (const task of await openAutoTasks(String(deal.id))) rows.push(row("task", { ...task, updatedAt: t }, true));
-    rows.push(row("task", newTask(String(customer.id), String(deal.id), "install", addDays(2), "Confirm install date, deposit and paperwork (STC / rebate forms)")));
+    for (const task of await openAutoTasks(String(deal.id))) rows.push(row("task", { ...task, updatedAt: t }, true, ownerOf(customer)));
+    rows.push(row("task", newTask(String(customer.id), String(deal.id), "install", addDays(2), "Confirm install date, deposit and paperwork (STC / rebate forms)"), false, ownerOf(customer)));
   }
   rows.push(row("note", newNote(String(customer.id), String(deal.id),
-    `Customer signed the proposal in Pylon: ${title}${design.total != null ? `, $${design.total.toLocaleString("en-AU")}` : ""}. Job ${wasStage === "installed" ? "kept as Installed" : "moved to Won"} with the signed design's details.${createdNew ? " (New customer created from Pylon.)" : ""}`)));
+    `Customer signed the proposal in Pylon: ${title}${design.total != null ? `, $${design.total.toLocaleString("en-AU")}` : ""}. Job ${wasStage === "installed" ? "kept as Installed" : "moved to Won"} with the signed design's details.${createdNew ? " (New customer created from Pylon.)" : ""}`), false, ownerOf(customer)));
 
   await saveRows(rows);
   return {

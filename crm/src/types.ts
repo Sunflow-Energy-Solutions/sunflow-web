@@ -193,7 +193,8 @@ export type Staff = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "staff";
+  /** admin: everything. staff: sees every customer. limited: sees only customers assigned to them. */
+  role: "admin" | "staff" | "limited";
   createdAt: string;
   updatedAt: string;
 };

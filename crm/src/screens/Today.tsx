@@ -1,5 +1,6 @@
 import { ArrowUpRight, CalendarCheck, Sparkles, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
+import AssignLeads from "../components/AssignLeads";
 import { TaskRow } from "../components/rows";
 import { TaskSheet } from "../components/forms";
 import { Card, Empty, PageHeader, SectionTitle, StageBadge } from "../components/ui";
@@ -57,7 +58,7 @@ export default function Today() {
       <PageHeader
         title={hello}
         sub={new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
-        right={me.staffId ? (
+        right={me.staffId && !me.isLimited ? (
           <button onClick={toggleMine} className={`min-h-9 rounded-full border px-3.5 text-sm font-semibold ${mine ? "border-solar-600 bg-solar-500 text-navy-900" : "border-mist-200 bg-white text-mist-500"}`}>
             {mine ? "Showing mine" : "Show only mine"}
           </button>
@@ -70,6 +71,8 @@ export default function Today() {
         <Stat label="Won this month" value={wonThisMonth} href="#/pipeline" />
         <Stat label="Customers" value={db.customers.length} href="#/customers" />
       </div>
+
+      <div className="mt-4"><AssignLeads /></div>
 
       {overdue.length > 0 && (
         <>

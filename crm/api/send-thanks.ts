@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { cleanButtons, renderEmail } from "./_mail.js";
-import { env, json, requireStaff, sb, sign } from "./_lib.js";
+import { env, json, requireStaff, sb, sign, staffRole } from "./_lib.js";
 
 /**
  * Sends one thank-you / review-request email for a finished job. Any signed-in staff member can use it.
@@ -27,9 +27,12 @@ async function handle(request: Request): Promise<Response> {
   if (!input?.customerId) return json({ error: "No customer given." }, 400);
 
   const res = await sb(`records?id=eq.${encodeURIComponent(input.customerId)}&kind=eq.customer&deleted=eq.false&select=data`);
-  const rows = (await res.json().catch(() => [])) as { data: { email?: string; unsubscribed?: boolean } }[];
+  const rows = (await res.json().catch(() => [])) as { data: { email?: string; unsubscribed?: boolean; assignedTo?: string } }[];
   const customer = res.ok ? rows[0]?.data : undefined;
   if (!customer) return json({ error: "Customer not found." }, 404);
+  // A limited person can only email their own customers (the app hides the rest, but the server checks too).
+  const me = await staffRole(staff.email);
+  if (me.role === "limited" && customer.assignedTo !== me.id) return json({ error: "That customer isn't assigned to you." }, 403);
   if (customer.unsubscribed && !input.preview) return json({ error: "This customer has unsubscribed from emails." }, 409);
 
   const to = input.preview ? staff.email : (customer.email ?? "").trim();

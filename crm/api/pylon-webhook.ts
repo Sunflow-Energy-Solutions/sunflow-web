@@ -1,7 +1,7 @@
 import { env, json } from "./_lib.js";
 import { applySigned, matchDeal } from "./_pylon-apply.js";
 import { getDesign, getProject, verifySignature } from "./_pylon.js";
-import { newNote, nowIso, row, saveRows, type Rec, type Row } from "./_records.js";
+import { newNote, nowIso, ownerOf, row, saveRows, type Rec, type Row } from "./_records.js";
 
 /**
  * Receives Pylon webhooks (set up in Pylon -> API settings -> Webhook destination).
@@ -65,9 +65,9 @@ async function payment(a: Rec, projectId: string): Promise<Response> {
     ? deal.checklist.map((i: Rec) => (purpose === "deposit" && i.key === "deposit" && !i.done ? { ...i, done: true, doneAt: t, doneBy: "Pylon payment" } : i))
     : deal.checklist;
   const rows: Row[] = [
-    ...(checklist ? [row("deal", { ...deal, checklist, updatedAt: t })] : []),
+    ...(checklist ? [row("deal", { ...deal, checklist, updatedAt: t }, false, ownerOf(customer))] : []),
     row("note", newNote(String(customer.id), String(deal.id),
-      `${purpose === "deposit" ? "Deposit" : "Payment"} ${dollars != null ? `of $${dollars.toLocaleString("en-AU")} ` : ""}received through Pylon${a.receipt_url ? ` (receipt: ${a.receipt_url})` : ""}.`)),
+      `${purpose === "deposit" ? "Deposit" : "Payment"} ${dollars != null ? `of $${dollars.toLocaleString("en-AU")} ` : ""}received through Pylon${a.receipt_url ? ` (receipt: ${a.receipt_url})` : ""}.`), false, ownerOf(customer)),
   ];
   await saveRows(rows);
   return json({ ok: true, dealId: deal.id });

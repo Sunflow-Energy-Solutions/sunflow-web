@@ -43,6 +43,19 @@ export async function isAdmin(email: string): Promise<boolean> {
   return staff.some((s) => s.role === "admin" && s.email?.toLowerCase() === email.toLowerCase());
 }
 
+/**
+ * The signed-in person's team entry. role: "admin" / "staff" (sees every customer) / "limited" (only their own).
+ * Someone with no team entry yet counts as limited, and while nobody is an admin yet everyone counts as admin (first-run setup).
+ */
+export async function staffRole(email: string): Promise<{ id: string; role: "admin" | "staff" | "limited" }> {
+  const res = await sb("records?kind=eq.staff&deleted=eq.false&select=id,data");
+  const rows = res.ok ? ((await res.json()) as { id: string; data: { email?: string; role?: string } }[]) : [];
+  const me = rows.find((r) => r.data.email?.toLowerCase() === email.toLowerCase());
+  const noAdmins = !rows.some((r) => r.data.role === "admin");
+  const role = noAdmins || me?.data.role === "admin" ? "admin" : me?.data.role === "staff" ? "staff" : "limited";
+  return { id: me?.id ?? `staff-${email.toLowerCase()}`, role };
+}
+
 export const sign = (customerId: string) =>
   createHmac("sha256", env("UNSUBSCRIBE_SECRET")).update(customerId).digest("hex");
 

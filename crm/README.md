@@ -45,10 +45,27 @@ It is separate from the public website: it lives in this `crm/` folder and is de
 - Works offline; changes upload when the phone is back in range. CSV export, backup/restore, CSV import.
 
 ## Roles
-- **Admin**: sends specials, connects Xero, deletes customers, exports / imports / restores, manages the team.
-- **Staff**: everything else. Everyone sees every customer (the "looked after by" field is for organising, not hiding).
-- The first person to sign in becomes the admin; they promote others in More -> Team.
-- Roles control what the app lets people do. They do not hide data from someone technical who is signed in, so only create logins for people you trust with the customer list.
+- **Admin**: everything - sends specials, connects Xero, imports from Pylon, assigns leads, deletes customers, exports / imports / restores, manages the team.
+- **Staff**: sees every customer and works on them, but can't change the team, send specials or connect other systems.
+- **Limited**: sees **only the customers assigned to them** - with those customers' jobs, follow-ups, notes, photos, documents and calendar entries.
+  This is enforced by the database itself (row-level security), not just hidden in the app: another customer's data is never sent to a limited
+  person's phone, and the server refuses attempts to read, change or reassign it. Limited people can't see specials history, settings or reports on
+  other people's customers, can't create Xero invoices, and can only email their own customers.
+- The first person to sign in becomes the admin. **Everyone after that starts as Limited** until an admin changes them in More -> Team.
+
+### New leads and assigning them
+Leads from the website, ads, Pylon and (if left blank) phone calls arrive **unassigned**: only admins and Staff see them. They appear at the top of
+**Today** under "New leads to assign" - pick who gets each one, and it moves to that person along with its follow-up and history (they see it within
+about 30 seconds). Customers -> **Unassigned** filters the same list. A repeat enquiry from a customer who is already assigned goes straight to their
+owner. Reassigning a customer takes it away from the previous owner's phone the next time that phone syncs.
+
+### Adding a limited person
+1. Run the latest `supabase/schema.sql` in Supabase (SQL Editor) **first** - it adds the rules that make "limited" real.
+2. Supabase -> Authentication -> Users -> Add user (email + password).
+3. In the CRM: More -> Team -> add them with the same email and the role **Limited** (or let them sign in once; they appear as Limited).
+4. Give them leads from Today -> "New leads to assign", or let them add their own customers (those are theirs automatically).
+
+Test it once: sign in as them on another device and confirm they see only their customers.
 
 ## Try it now (no setup)
 ```bash

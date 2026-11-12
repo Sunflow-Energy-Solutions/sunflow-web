@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { COLLECTION_KIND, cloudEnabled, pullRows, pushRows, removeStored, type Row } from "./cloud";
+import { COLLECTION_KIND, cloudEnabled, pullRows, pullVisibleIds, pushRows, removeStored, type Row } from "./cloud";
+import { ownerFor, pruneToVisible, type OwnerMap } from "./owners";
 import { obsoleteTaskIds, tasksForStage } from "./automation";
 import { TEMPLATE, buildChecklist, syncChecklist } from "./checklist";
 import {
@@ -34,7 +35,16 @@ function writeJson(key: string, value: unknown) {
 
 export type SyncState = "local" | "synced" | "syncing" | "offline" | "error";
 
-export type Me = { email: string; name: string; staffId: string; isAdmin: boolean };
+export type Me = {
+  email: string;
+  name: string;
+  /** This person's id in the team list (deterministic from their email, so it is known before their entry has synced) */
+  staffId: string;
+  role: Staff["role"];
+  isAdmin: boolean;
+  /** Can only see customers assigned to them */
+  isLimited: boolean;
+};
 
 type Store = {
   db: Db;
@@ -104,6 +114,10 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
   const meNameRef = useRef("");
   const queueRef = useRef(queue);
   const busy = useRef(false);
+  const limitedRef = useRef(false);
+  // customer id -> owner, kept up to date as soon as a customer is saved (state lags a render behind)
+  const ownersRef = useRef<OwnerMap>(null as unknown as OwnerMap);
+  if (!ownersRef.current) ownersRef.current = new Map(db.customers.map((c) => [c.id, c.assignedTo || null]));
 
   useEffect(() => {
     dbRef.current = db;
@@ -113,6 +127,10 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
     queueRef.current = queue;
     writeJson(QUEUE_KEY, queue);
   }, [queue]);
+  // Customers that arrive by sync also feed the owner lookup used when saving their jobs, notes and files.
+  useEffect(() => {
+    db.customers.forEach((c) => ownersRef.current.set(c.id, c.assignedTo || null));
+  }, [db.customers]);
 
   /** Push local changes up, then pull everyone else's down. */
   const syncNow = useCallback(async () => {
@@ -140,6 +158,12 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
         localStorage.setItem(CURSOR_KEY, rows[rows.length - 1].updated_at);
       } else if (!cursor) {
         localStorage.setItem(CURSOR_KEY, nowIso());
+      }
+      // A limited login: drop customers that were reassigned to someone else (the database stops sending them, but never says "gone").
+      if (limitedRef.current) {
+        const visible = await pullVisibleIds();
+        const pending = new Set(queueRef.current.map((r) => r.id));
+        setDb((cur) => pruneToVisible(cur, visible, pending));
       }
       setSyncError("");
       setSync("synced");
@@ -177,6 +201,8 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
 
   /** Apply one record change locally and queue it for the cloud. */
   const commit = useCallback((collection: Collection, record: AnyRecord, deleted = false) => {
+    if (collection === "customers") ownersRef.current.set(record.id, (record as Customer).assignedTo || null);
+    const owner = ownerFor(collection, record as Parameters<typeof ownerFor>[1], ownersRef.current);
     setDb((cur) => {
       const list = cur[collection] as AnyRecord[];
       const next = deleted
@@ -188,11 +214,12 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
     });
     setQueue((q) => [
       ...q.filter((r) => r.id !== record.id),
-      { id: record.id, kind: COLLECTION_KIND[collection], data: record as unknown as Record<string, unknown>, deleted, updated_at: record.updatedAt },
+      { id: record.id, kind: COLLECTION_KIND[collection], data: record as unknown as Record<string, unknown>, deleted, updated_at: record.updatedAt, owner },
     ]);
   }, []);
 
-  // First time someone signs in they get a staff record. The very first person ever becomes the admin.
+  // First time someone signs in they get a team entry. The very first person ever becomes the admin; everyone after that
+  // starts as LIMITED (sees only customers assigned to them) until an admin changes their role. The database enforces this.
   const myEmail = email?.toLowerCase() ?? "";
   const hasMe = db.staff.some((s) => s.email.toLowerCase() === myEmail);
   useEffect(() => {
@@ -200,18 +227,21 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
     const t = nowIso();
     commit("staff", {
       id: `staff-${myEmail}`, name: myEmail.split("@")[0], email: myEmail,
-      role: dbRef.current.staff.length === 0 ? "admin" : "staff", createdAt: t, updatedAt: t,
+      role: dbRef.current.staff.length === 0 ? "admin" : "limited", createdAt: t, updatedAt: t,
     });
   }, [signedIn, myEmail, hasMe, sync, commit]);
 
   const me = useMemo<Me>(() => {
-    if (!cloudEnabled) return { email: "", name: "You", staffId: "", isAdmin: true };
+    if (!cloudEnabled) return { email: "", name: "You", staffId: "", role: "admin", isAdmin: true, isLimited: false };
     const s = db.staff.find((x) => x.email.toLowerCase() === myEmail);
     // If nobody has been made an admin yet, don't lock the owner out of the admin screens.
     const noAdmins = !db.staff.some((x) => x.role === "admin");
-    return { email: myEmail, name: s?.name ?? myEmail.split("@")[0], staffId: s?.id ?? "", isAdmin: s?.role === "admin" || noAdmins };
+    const isAdmin = s?.role === "admin" || noAdmins;
+    const role: Staff["role"] = isAdmin ? "admin" : (s?.role ?? "limited");
+    return { email: myEmail, name: s?.name ?? myEmail.split("@")[0], staffId: s?.id ?? `staff-${myEmail}`, role, isAdmin, isLimited: role === "limited" };
   }, [db.staff, myEmail]);
   meNameRef.current = me.name;
+  limitedRef.current = me.isLimited;
   const settings = useMemo<AppSettings>(() => ({ ...defaultSettings(), ...(db.settings.find((s) => s.id === SETTINGS_ID) ?? {}) }), [db.settings]);
 
   const find = <K extends Collection>(c: K, id: string) => (dbRef.current[c] as AnyRecord[]).find((r) => r.id === id);
@@ -230,8 +260,18 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       return customer;
     };
     const updateCustomer: Store["updateCustomer"] = (id, patch) => {
-      const cur = find("customers", id);
-      if (cur) commit("customers", { ...cur, ...patch, updatedAt: stamp() } as Customer);
+      const cur = find("customers", id) as Customer | undefined;
+      if (!cur) return;
+      commit("customers", { ...cur, ...patch, updatedAt: stamp() } as Customer);
+      // Reassigned: the customer's jobs, follow-ups, notes and files move to the new person with them.
+      if ("assignedTo" in patch && (patch.assignedTo || "") !== (cur.assignedTo || "")) {
+        const d = dbRef.current;
+        const t = stamp();
+        d.deals.filter((x) => x.customerId === id).forEach((x) => commit("deals", { ...x, updatedAt: t }));
+        d.tasks.filter((x) => x.customerId === id).forEach((x) => commit("tasks", { ...x, updatedAt: t }));
+        d.notes.filter((x) => x.customerId === id).forEach((x) => commit("notes", { ...x, updatedAt: t }));
+        d.files.filter((x) => x.customerId === id).forEach((x) => commit("files", { ...x, updatedAt: t }));
+      }
     };
     const deleteCustomer: Store["deleteCustomer"] = (id) => {
       const d = dbRef.current;

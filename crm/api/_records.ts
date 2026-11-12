@@ -4,7 +4,7 @@ import { sb } from "./_lib.js";
 /** Server-side helpers for creating and updating CRM records outside the app (inbound leads, Pylon). */
 
 export type Rec = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-export type Row = { id: string; kind: string; data: Rec; deleted: boolean; updated_at: string };
+export type Row = { id: string; kind: string; data: Rec; deleted: boolean; updated_at: string; owner: string | null };
 
 export const nowIso = () => new Date().toISOString();
 export const melbourneToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne" }).format(new Date());
@@ -13,12 +13,23 @@ export const addDays = (n: number, from = melbourneToday()) => {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 };
 
-export const row = (kind: string, data: Rec, deleted = false): Row => ({ id: String(data.id), kind, data, deleted, updated_at: String(data.updatedAt ?? nowIso()) });
+/**
+ * `owner` is the staff id of whoever looks after the customer this record belongs to (null = nobody yet). The database
+ * uses it to decide who may see the record, so every customer-related row must carry its customer's owner.
+ */
+export const row = (kind: string, data: Rec, deleted = false, owner: string | null = null): Row => ({
+  id: String(data.id), kind, data, deleted, updated_at: String(data.updatedAt ?? nowIso()), owner,
+});
+
+export const ownerOf = (customer: Rec | null | undefined): string | null => (customer?.assignedTo ? String(customer.assignedTo) : null);
 
 /** Saves records. The phones pick them up on their next sync because updated_at is new. */
 export async function saveRows(rows: Row[]): Promise<void> {
   if (!rows.length) return;
-  const res = await sb("records", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(rows) });
+  const post = (body: unknown) => sb("records", { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify(body) });
+  let res = await post(rows);
+  // Database update with the owner column not run yet: save without it rather than lose the lead.
+  if (!res.ok && /owner/i.test(await res.clone().text())) res = await post(rows.map((r) => { const c: Rec = { ...r }; delete c.owner; return c; }));
   if (!res.ok) throw new Error(`Could not save to the CRM database (${res.status}): ${(await res.text()).slice(0, 200)}`);
 }
 
