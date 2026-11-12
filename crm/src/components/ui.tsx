@@ -26,7 +26,7 @@ export function Button({
   );
 }
 
-const inputCls =
+export const inputCls =
   "w-full min-h-11 rounded-xl border border-mist-300 bg-white px-3 py-2 text-navy-900 placeholder:text-mist-400 focus:border-solar-600 focus:outline-none focus:ring-2 focus:ring-solar-400/40";
 
 export function Field({ label, hint, children, className }: { label: string; hint?: string; children: ReactNode; className?: string }) {

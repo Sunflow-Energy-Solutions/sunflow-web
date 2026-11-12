@@ -8,7 +8,10 @@ import {
   type Customer, type Deal, type InstallRecord, type Quote, type SiteDetails, type Task, type TaskKind,
 } from "../types";
 import { addDays, fullName, today, uid } from "../utils";
-import { Button, Check, Field, Input, Select, Sheet, Textarea } from "./ui";
+import AddressInput from "./AddressInput";
+import { Button, Check, Field, Input, Select, Sheet, Textarea, inputCls } from "./ui";
+
+const HAS_PLACES = !!import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
 
 /** Brand suggestions come from the Sunflow supplier catalogue (scripts/import-brands.mjs). Any other brand can still be typed. */
 function BrandLists() {
@@ -107,7 +110,19 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
           </p>
         )}
         <Field label="Email"><Input type="email" inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} autoCapitalize="off" /></Field>
-        <Field label="Suburb"><Input value={f.suburb} onChange={(e) => set("suburb", e.target.value)} /></Field>
+        <Field label="Street address" hint={HAS_PLACES ? "Start typing and pick the address - suburb and postcode fill in for you." : undefined}>
+          <AddressInput
+            value={f.address}
+            onChange={(v) => set("address", v)}
+            onSelect={(p) => setF((x) => ({ ...x, address: p.street || x.address, suburb: p.suburb || x.suburb, postcode: p.postcode || x.postcode }))}
+            className={inputCls}
+            placeholder="e.g. 12 Smith Street"
+          />
+        </Field>
+        <div className="grid grid-cols-[1fr_7rem] gap-3">
+          <Field label="Suburb"><Input value={f.suburb} onChange={(e) => set("suburb", e.target.value)} /></Field>
+          <Field label="Postcode"><Input inputMode="numeric" value={f.postcode} onChange={(e) => set("postcode", e.target.value)} maxLength={4} /></Field>
+        </div>
 
         {!customer && (
           <div>
@@ -144,20 +159,16 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
         </Field>
 
         <button type="button" onClick={() => setMore(!more)} className="text-sm font-semibold text-navy-600 underline-offset-2 hover:underline">
-          {more ? "Hide extra details" : "More details (address, notes, email consent)"}
+          {more ? "Hide extra details" : "More details (type, notes, email consent)"}
         </button>
         {more && (
           <div className="space-y-3.5">
-            <Field label="Street address"><Input value={f.address} onChange={(e) => set("address", e.target.value)} autoComplete="street-address" /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Postcode"><Input inputMode="numeric" value={f.postcode} onChange={(e) => set("postcode", e.target.value)} maxLength={4} /></Field>
-              <Field label="Type">
-                <Select value={f.kind} onChange={(e) => set("kind", e.target.value as Customer["kind"])}>
-                  <option>Residential</option>
-                  <option>Commercial</option>
-                </Select>
-              </Field>
-            </div>
+            <Field label="Type">
+              <Select value={f.kind} onChange={(e) => set("kind", e.target.value as Customer["kind"])}>
+                <option>Residential</option>
+                <option>Commercial</option>
+              </Select>
+            </Field>
             <Field label="Notes"><Textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Roof type, gate code, dog, best time to call..." /></Field>
             <Check
               checked={f.marketingConsent}
