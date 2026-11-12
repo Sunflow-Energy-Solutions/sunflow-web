@@ -29,3 +29,25 @@ export function cleanButtons(input: unknown): Button[] {
     .slice(0, 4)
     .map((b) => ({ label: b.label.trim().slice(0, 60) || "Open", url: b.url.trim() }));
 }
+
+/** Plain internal email (no unsubscribe footer): a heading, a short list of facts, and an action button. For staff, not customers. */
+export function renderInternalEmail(opts: { heading: string; intro?: string; rows: [string, string][]; button?: Button; footer?: string }): string {
+  const rows = opts.rows
+    .filter(([, v]) => v && v.trim())
+    .map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#6b7386;font-size:14px;vertical-align:top;white-space:nowrap">${escapeHtml(k)}</td><td style="padding:6px 0;font-size:15px;font-weight:600">${escapeHtml(v).replace(/\n/g, "<br>")}</td></tr>`)
+    .join("");
+  const button = opts.button
+    ? `<p style="margin:22px 0 0"><a href="${escapeHtml(opts.button.url)}" style="display:inline-block;padding:13px 22px;border-radius:10px;background:#fdb813;color:#0a1730;font-weight:bold;font-size:15px;text-decoration:none">${escapeHtml(opts.button.label)}</a></p>`
+    : "";
+  return `<!doctype html><html><body style="margin:0;background:#f7f8fa;font-family:Arial,Helvetica,sans-serif;color:#0a1730">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:12px;overflow:hidden">
+<tr><td style="background:#0a1730;padding:16px 24px;color:#fdb813;font-size:18px;font-weight:bold">Sunflow CRM</td></tr>
+<tr><td style="padding:24px">
+<h1 style="margin:0 0 6px;font-size:20px">${escapeHtml(opts.heading)}</h1>
+${opts.intro ? `<p style="margin:0 0 14px;color:#6b7386;font-size:14px;line-height:1.5">${escapeHtml(opts.intro)}</p>` : ""}
+<table role="presentation" cellpadding="0" cellspacing="0">${rows}</table>${button}
+</td></tr>
+${opts.footer ? `<tr><td style="padding:14px 24px;border-top:1px solid #e2e5eb;font-size:12px;color:#6b7386">${escapeHtml(opts.footer)}</td></tr>` : ""}
+</table></td></tr></table></body></html>`;
+}

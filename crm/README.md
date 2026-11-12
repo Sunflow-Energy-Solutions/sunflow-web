@@ -56,7 +56,8 @@ It is separate from the public website: it lives in this `crm/` folder and is de
 ### New leads and assigning them
 Leads from the website, ads, Pylon and (if left blank) phone calls arrive **unassigned**: only admins and Staff see them. They appear at the top of
 **Today** under "New leads to assign" - pick who gets each one, and it moves to that person along with its follow-up and history (they see it within
-about 30 seconds). Customers -> **Unassigned** filters the same list. A repeat enquiry from a customer who is already assigned goes straight to their
+about 30 seconds). With "Email them the lead's details" ticked (the default) they also get an email with the lead's name, phone, address, what they want,
+where it came from and a button that opens it in the CRM (sent from `MAIL_FROM`, to the address in the Team list). Customers -> **Unassigned** filters the same list. A repeat enquiry from a customer who is already assigned goes straight to their
 owner. Reassigning a customer takes it away from the previous owner's phone the next time that phone syncs.
 
 ### Adding a limited person
