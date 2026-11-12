@@ -20,7 +20,41 @@ type Lead = {
   source: string;
   /** Only true if the person ticked the "email me offers" box */
   marketingConsent?: boolean;
+  /** Campaign tags / referrer the browser remembered (see lib/attribution.ts). Untrusted: cleaned before use. */
+  attribution?: unknown;
 };
+
+type Att = { utmSource: string; utmMedium: string; utmCampaign: string; utmContent: string; utmTerm: string; gclid: boolean; fbclid: boolean; referrerHost: string; landingPath: string };
+
+/** Only plain, short strings and booleans are accepted from the browser. */
+function readAttribution(v: unknown): Att {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const s = (k: string) => (typeof o[k] === "string" ? (o[k] as string).replace(/[<>]/g, "").trim().slice(0, 120) : "");
+  return {
+    utmSource: s("utmSource"), utmMedium: s("utmMedium"), utmCampaign: s("utmCampaign"), utmContent: s("utmContent"), utmTerm: s("utmTerm"),
+    gclid: o.gclid === true, fbclid: o.fbclid === true, referrerHost: s("referrerHost"), landingPath: s("landingPath"),
+  };
+}
+
+/** The channel (a value of the CRM's "How did they find us?" list) and campaign name for an enquiry. */
+function channelOf(a: Att): { channel: string; campaign: string } {
+  const src = a.utmSource.toLowerCase();
+  const med = a.utmMedium.toLowerCase();
+  const ref = a.referrerHost.toLowerCase();
+  const paid = /cpc|ppc|paid|ads?$|display|retarget/.test(med);
+  const campaign = a.utmCampaign || a.utmContent || "";
+
+  if (a.fbclid || /facebook|^fb$|instagram|^ig$|meta/.test(src)) {
+    return { channel: paid || a.fbclid ? "Facebook / Instagram ad" : "Facebook / Instagram (organic)", campaign };
+  }
+  if (a.gclid || (/google/.test(src) && paid)) return { channel: "Google ad", campaign };
+  if (src) return { channel: `Other: ${a.utmSource}`, campaign };
+  if (/(^|\.)google\./.test(ref)) return { channel: "Google search / Maps", campaign: "" };
+  if (/facebook\.|instagram\.|^l\.facebook|^lm\.facebook/.test(ref)) return { channel: "Facebook / Instagram (organic)", campaign: "" };
+  if (/bing\.|duckduckgo\.|yahoo\./.test(ref)) return { channel: "Other search engine", campaign: "" };
+  if (ref) return { channel: `Website referral: ${a.referrerHost}`, campaign: "" };
+  return { channel: "Website (direct)", campaign: "" };
+}
 
 type Row = { id: string; kind: string; data: Record<string, unknown>; deleted: boolean; updated_at: string };
 
@@ -59,6 +93,8 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       }
     }
 
+    const att = readAttribution(lead.attribution);
+    const { channel, campaign } = channelOf(att);
     const parsed = lead.suburb || lead.postcode ? { street: lead.address ?? "", suburb: lead.suburb ?? "", state: lead.state ?? "", postcode: lead.postcode ?? "" } : splitAddress(lead.address ?? "");
     const [firstName, ...rest] = lead.name.trim().split(/\s+/);
     const rows: Row[] = [];
@@ -76,7 +112,7 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       customerId = crypto.randomUUID();
       upsert("customer", {
         id: customerId, firstName: firstName ?? "", lastName: rest.join(" "), phone: lead.phone.trim(), email,
-        address: parsed.street, suburb: parsed.suburb, state: parsed.state || lead.state?.toUpperCase() || "VIC", postcode: parsed.postcode, kind: "Residential", source: lead.source,
+        address: parsed.street, suburb: parsed.suburb, state: parsed.state || lead.state?.toUpperCase() || "VIC", postcode: parsed.postcode, kind: "Residential", source: channel,
         notes: "", marketingConsent: !!lead.marketingConsent, unsubscribed: false, createdAt: now, updatedAt: now,
       });
     }
@@ -88,6 +124,8 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       id: dealId, customerId,
       title: (lead.services ?? []).join(" + ") || "Website enquiry",
       stage: "new",
+      // where this enquiry came from (kept per enquiry, so a repeat customer's second job has its own source)
+      source: channel, campaign,
       system: {
         solarKw: has("solar") ? 0 : null, panelBrand: "", batteryKwh: has("batter") ? 0 : null, batteryBrand: "",
         inverterBrand: "", evCharger: has("ev") || has("charger") ? "TBC" : "",
@@ -101,7 +139,12 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
     });
     upsert("note", {
       id: crypto.randomUUID(), customerId, dealId, kind: "system",
-      text: `${lead.source}${lead.services?.length ? `: ${lead.services.join(", ")}` : ""}${lead.notes ? `. "${lead.notes.slice(0, 500)}"` : ""}${existing ? " (existing customer)" : ""}`,
+      text: [
+        `${lead.source}${lead.services?.length ? `: ${lead.services.join(", ")}` : ""}`,
+        `Came from: ${channel}${campaign ? ` - ${campaign}` : ""}${att.landingPath ? ` (landed on ${att.landingPath})` : ""}`,
+        lead.notes ? `"${lead.notes.slice(0, 500)}"` : "",
+        existing ? "Existing customer" : "",
+      ].filter(Boolean).join(". "),
       createdAt: now, updatedAt: now,
     });
 

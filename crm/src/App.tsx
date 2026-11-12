@@ -9,6 +9,7 @@ import CustomerDetail from "./screens/CustomerDetail";
 import Login from "./screens/Login";
 import Pipeline from "./screens/Pipeline";
 import Settings from "./screens/Settings";
+import Sources from "./screens/Sources";
 import Specials from "./screens/Specials";
 import Tasks from "./screens/Tasks";
 import Today from "./screens/Today";
@@ -52,6 +53,7 @@ function Shell({ email }: { email?: string }) {
   else if (path === "/pipeline") page = <Pipeline />;
   else if (path === "/tasks") page = <Tasks />;
   else if (path === "/specials" && me.isAdmin) page = <Specials />;
+  else if (path === "/sources") page = <Sources />;
   else if (path === "/settings") page = <Settings email={email} />;
   else page = <Today />;
 

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { name, phone, email, address, services, notes, attachment, marketing } = body as Record<string, unknown>;
+  const { name, phone, email, address, services, notes, attachment, marketing, attribution } = body as Record<string, unknown>;
 
   if (
     typeof name !== "string" || !name.trim() ||
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   await pushLeadToCrm({
     name, phone, email, address, source: "Website quote form",
     services: Array.isArray(services) ? services.filter((s): s is string => typeof s === "string") : [],
-    notes: typeof notes === "string" ? notes : "", marketingConsent: marketing === true,
+    notes: typeof notes === "string" ? notes : "", marketingConsent: marketing === true, attribution,
   });
 
   try {

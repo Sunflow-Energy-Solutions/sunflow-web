@@ -126,6 +126,9 @@ export type Deal = {
   checklist?: CheckItem[];
   /** Template keys the team removed from this job, so a system change doesn't add them back */
   checklistSkipped?: string[];
+  /** Where this enquiry came from (one of SOURCES, or "Facebook / Instagram ad" etc.) and the ad campaign, if known */
+  source?: string;
+  campaign?: string;
   /** Set when the customer e-signed a Pylon proposal: which design was signed, and when */
   pylon?: { projectId: string; designId: string; signedAt: string };
   xero?: XeroInvoice[];
@@ -269,7 +272,7 @@ export const emptySystem = (): SystemChoice => ({
 export const AU_STATES = ["VIC", "NSW", "QLD", "SA", "WA", "TAS", "ACT", "NT"];
 
 export const SOURCES = [
-  "Website quote form", "Phone call", "Referral", "Facebook / Instagram", "Google",
-  "Door knock / event", "Repeat customer", "Other",
+  "Phone call", "Referral", "Repeat customer", "Facebook / Instagram ad", "Facebook / Instagram (organic)",
+  "Google ad", "Google search / Maps", "Website (direct)", "Door knock / event", "Pylon", "Other",
 ];
 

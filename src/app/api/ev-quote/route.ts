@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { firstName, lastName, email, phone, street, suburb, state, postcode, notes, items, estimatedTotal, marketing } =
+  const { firstName, lastName, email, phone, street, suburb, state, postcode, notes, items, estimatedTotal, marketing, attribution } =
     body as Record<string, unknown>;
 
   if (
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   await pushLeadToCrm({
     name: `${firstName} ${lastName}`, phone, email, address: street, suburb, state: typeof state === "string" ? state : undefined, postcode,
     services: ["EV charger"], notes: itemsSummary.split("\n").join(", "), source: "Website EV charger shop",
-    marketingConsent: marketing === true,
+    marketingConsent: marketing === true, attribution,
   });
 
   try {

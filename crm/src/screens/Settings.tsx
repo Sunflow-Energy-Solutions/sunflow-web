@@ -1,8 +1,9 @@
-import { Cloud, CloudOff, Download, LogOut, Mail, Printer, RefreshCw, Smartphone, Trash2, Upload } from "lucide-react";
+import { BarChart3, Cloud, CloudOff, Download, LogOut, Mail, Printer, RefreshCw, Smartphone, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { printChecklist } from "../checklist";
 import { Button, Card, Field, Input, PageHeader, SectionTitle, Select, Textarea } from "../components/ui";
 import { useXeroStatus, xeroCall } from "../xero";
+import PylonImport from "./PylonImport";
 import { cloudEnabled, supabase } from "../cloud";
 import { demoData } from "../demo";
 import { useStore } from "../store";
@@ -148,12 +149,23 @@ export default function Settings({ email }: { email?: string }) {
         </div>
       )}
 
+      <SectionTitle>Reports</SectionTitle>
+      <Card className="divide-y divide-mist-100">
+        <ActionRow icon={<BarChart3 className="size-5" />} title="Lead sources" sub="Where enquiries come from and which ads turn into jobs" onClick={() => (location.hash = "#/sources")} />
+      </Card>
+
       <SectionTitle>Job paperwork</SectionTitle>
       <Card className="divide-y divide-mist-100">
         <ActionRow icon={<Printer className="size-5" />} title="Print blank job checklist" sub="The standard Sunflow paperwork checklist for the office or the van" onClick={() => printChecklist()} />
       </Card>
 
       {me.isAdmin && <TeamSection />}
+      {me.isAdmin && cloudEnabled && (
+        <>
+          <SectionTitle>Pylon: import signed jobs</SectionTitle>
+          <PylonImport />
+        </>
+      )}
       {me.isAdmin && <ThanksSettings />}
       {me.isAdmin && <XeroSection />}
 

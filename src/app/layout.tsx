@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import ChatWidget from "@/components/chat/ChatWidget";
 import CartDrawer from "@/components/shop/CartDrawer";
+import AttributionCapture from "@/components/ui/AttributionCapture";
 import BackToTop from "@/components/ui/BackToTop";
 import { CartProvider } from "@/lib/cart-context";
 import { siteConfig } from "@/lib/site-config";
@@ -102,6 +103,7 @@ export default function RootLayout({
           <ChatWidget />
           <CartDrawer />
           <BackToTop />
+          <AttributionCapture />
         </CartProvider>
       </body>
     </html>

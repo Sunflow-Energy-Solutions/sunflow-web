@@ -72,6 +72,7 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
         const parts = [interest.solar && "Solar", interest.battery && "Battery", interest.ev && "EV charger"].filter(Boolean).join(" + ");
         addDeal(c.id, {
           title: parts,
+          source: f.source,
           system: {
             ...emptySystem(),
             solarKw: interest.solar ? 0 : null,

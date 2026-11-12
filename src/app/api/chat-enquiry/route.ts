@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { name, phone, email, message, transcript } = body as Record<string, unknown>;
+  const { name, phone, email, message, transcript, attribution } = body as Record<string, unknown>;
 
   const cleanName = clean(name, 100);
   const cleanPhone = clean(phone, 40);
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         .join("\n")
     : "";
 
-  await pushLeadToCrm({ name: cleanName, phone: cleanPhone, email: cleanEmail, source: "Website chat", notes: cleanMessage });
+  await pushLeadToCrm({ name: cleanName, phone: cleanPhone, email: cleanEmail, source: "Website chat", notes: cleanMessage, attribution });
 
   try {
     await sendNotification({

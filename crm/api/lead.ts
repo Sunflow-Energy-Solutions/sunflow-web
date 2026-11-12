@@ -56,8 +56,13 @@ async function handle(request: Request): Promise<Response> {
   const address = pick(body, ["address", "street_address", "street"]);
   const message = pick(body, ["message", "notes", "comments", "comment", "enquiry", "tell_us_more"]);
   const interest = pick(body, ["services", "interest", "interested_in", "product", "what_are_you_interested_in"]);
-  const source = pick(body, ["source", "lead_source"]) || "Online ad";
-  const campaign = pick(body, ["campaign", "campaign_name", "ad_name", "adset_name", "form_name", "ad_id"]);
+  // Channel: what the sender says, else guessed from Facebook's "platform" field or utm_source, else a generic "Online ad".
+  const platform = pick(body, ["platform", "publisher_platform"]).toLowerCase();
+  const utmSource = pick(body, ["utm_source"]).toLowerCase();
+  const source =
+    pick(body, ["source", "lead_source"]) ||
+    (/^(fb|ig|facebook|instagram|meta)/.test(platform) || /facebook|^fb$|instagram|^ig$|meta/.test(utmSource) ? "Facebook / Instagram ad" : /google/.test(`${platform} ${utmSource}`) ? "Google ad" : "Online ad");
+  const campaign = pick(body, ["campaign", "campaign_name", "utm_campaign", "ad_name", "adset_name", "form_name", "ad_id"]);
   const consent = truthy(pick(body, ["marketing_consent", "consent", "opt_in", "optin", "agree_to_marketing"]));
 
   const existing = await findCustomerByEmail(email);
@@ -78,6 +83,7 @@ async function handle(request: Request): Promise<Response> {
   const has = (...w: string[]) => w.some((x) => text.includes(x));
   const deal = newDeal(String(customer.id), {
     title: interest || "Online enquiry",
+    source, campaign,
     system: { solarKw: has("solar") ? 0 : null, panelBrand: "", batteryKwh: has("batter") ? 0 : null, batteryBrand: "", inverterBrand: "", evCharger: has("ev ", "ev charger", "charger") ? "TBC" : "" },
   });
   save("deal", deal);

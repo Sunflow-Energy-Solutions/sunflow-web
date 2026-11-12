@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getAttribution } from "@/lib/attribution";
 import { CheckCircle2, FileUp, Send, X } from "lucide-react";
 import Button from "@/components/ui/Button";
 import AddressAutocomplete from "@/components/forms/AddressAutocomplete";
@@ -72,6 +73,7 @@ export default function QuoteForm() {
           services: selectedServices,
           notes: data.get("notes"),
           marketing: data.get("marketing") === "on",
+          attribution: getAttribution(),
           attachment,
         }),
       });

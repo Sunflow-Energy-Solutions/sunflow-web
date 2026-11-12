@@ -276,7 +276,10 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       const t = stamp();
       const deal: Deal = {
         id: uid(), customerId, title: "", stage: "new", system: emptySystem(), quotes: [], value: null,
-        installDate: null, installedOn: null, lostReason: "", createdAt: t, updatedAt: t, ...patch,
+        installDate: null, installedOn: null, lostReason: "", createdAt: t, updatedAt: t,
+        // a new system for an existing customer inherits how they found us, unless told otherwise
+        source: (find("customers", customerId) as Customer | undefined)?.source,
+        ...patch,
       };
       commit("deals", deal);
       tasksForStage(deal, deal.stage).forEach((task) => commit("tasks", task));

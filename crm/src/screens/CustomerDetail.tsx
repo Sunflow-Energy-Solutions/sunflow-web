@@ -218,6 +218,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
         <div className="min-w-0">
           <p className="truncate font-bold">{deal.title || "System"}</p>
           <p className="text-sm text-mist-500">{systemSummary(deal) || "System details not entered yet"}</p>
+          {deal.source && <p className="text-xs font-semibold text-navy-600">Came from: {deal.source}{deal.campaign ? ` - ${deal.campaign}` : ""}</p>}
         </div>
         <StageBadge stage={deal.stage} />
       </div>

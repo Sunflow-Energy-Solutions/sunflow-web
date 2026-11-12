@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { name, phone, email, subject, message } = body as Record<string, unknown>;
+  const { name, phone, email, subject, message, attribution } = body as Record<string, unknown>;
 
   if (
     typeof name !== "string" || !name.trim() ||
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   await pushLeadToCrm({
     name, phone: typeof phone === "string" ? phone : "", email, source: "Website contact form",
-    notes: typeof subject === "string" && subject ? `${subject}: ${message}` : message,
+    notes: typeof subject === "string" && subject ? `${subject}: ${message}` : message, attribution,
   });
 
   try {

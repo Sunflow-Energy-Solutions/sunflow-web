@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getAttribution } from "@/lib/attribution";
 import { CheckCircle2, Send } from "lucide-react";
 import Button from "@/components/ui/Button";
 
@@ -26,6 +27,7 @@ export default function ContactForm() {
           email: data.get("email"),
           subject: data.get("subject"),
           message: data.get("message"),
+          attribution: getAttribution(),
         }),
       });
 

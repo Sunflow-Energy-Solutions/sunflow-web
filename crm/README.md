@@ -35,6 +35,10 @@ It is separate from the public website: it lives in this `crm/` folder and is de
   proposal in Pylon**, the job in the CRM is filled from that signed design (system size, panel / inverter / battery, price, quote marked
   accepted), moved to Won, its reminders and checklist set up, and the Pylon link saved. Designs that are only sent never reach the CRM, so
   you can send as many options as you like. Needs Pylon API access (see "Pylon -> CRM" below).
+- **Lead sources**: every enquiry records where it came from (Facebook / Instagram ad, Google ad, Google search, referral, phone call...) and the ad campaign
+  when known. The website remembers the ad link a visitor arrived through for 30 days and sends it with the form they submit. More -> Lead sources shows
+  enquiries, quotes, jobs won, win rate and won value per source and per campaign. To get campaign names, put UTM tags on ad links, e.g.
+  `https://www.sunflowenergysolutions.com.au/battery?utm_source=facebook&utm_medium=paid_social&utm_campaign=spring-battery`.
 - **Xero**: when a job is Won, create a **draft** invoice (deposit or full) in Xero in one tap. Nothing is sent or approved automatically.
 - **Enquiries become customers automatically**, from the website forms and chat, Facebook / Instagram lead ads, Google lead forms or any
   other source (see "Online ads -> CRM"), each with a "call today" reminder and the campaign recorded.
@@ -120,10 +124,13 @@ land as a New lead with a call-today reminder. Repeat enquiries with the same em
 5. How it fits together: staff click **Design in Pylon** on a job (the job's id travels to Pylon as the project's reference number), build and
    send as many designs as needed, and only when the customer **signs** does the CRM update that job from the signed design.
    If the reference is missing the CRM falls back to matching the customer's email, and if nobody matches it creates the customer.
-6. Pylon's delivery log (in the same API settings) shows whether each event reached the CRM; failures are retried for about 31 hours.
+6. **Jobs signed before this was connected**: More -> Pylon: import signed jobs. Pick a period, Find signed jobs, tick the ones to bring in, Import.
+   Each shows whether it will update an existing job, add to an existing customer or create a new one; nothing is imported until you choose it, and a
+   project is never imported twice.
+7. Pylon's delivery log (in the same API settings) shows whether each event reached the CRM; failures are retried for about 31 hours.
 Prices come across exactly as Pylon states them on the proposal; check GST treatment against your first real signed job.
 
-### 7. Put it on each phone
+### 8. Put it on each phone
 Open the CRM address, sign in, then iPhone: Safari -> Share -> **Add to Home Screen**. Android: Chrome -> menu -> **Install app**.
 
 ## Privacy and the Spam Act

@@ -28,16 +28,21 @@ async function pylonGet(path: string): Promise<{ ok: boolean; status: number; bo
 
 const attrs = (b: Rec): Rec => (b.data?.attributes ?? b.attributes ?? {}) as Rec;
 
-export type PylonProject = { reference: string; name: string; email: string; phone: string; address: string; suburb: string; state: string; postcode: string };
+export type PylonProject = {
+  reference: string; name: string; email: string; phone: string; address: string; suburb: string; state: string; postcode: string;
+  /** The design the customer signed, when Pylon says there is one (relationship latest_signed_design) */
+  signedDesignId?: string;
+  createdAt?: string;
+};
 
-export async function getProject(id: string): Promise<PylonProject> {
-  // Some Pylon endpoints insist on an explicit field list, so retry with one if the plain request is refused.
-  let r = await pylonGet(`solar_projects/${encodeURIComponent(id)}`);
-  if (!r.ok && r.status === 400) r = await pylonGet(`solar_projects/${encodeURIComponent(id)}?fields[solar_projects]=reference_number,customer_details,site_address`);
-  if (!r.ok) throw new Error(`Pylon project lookup failed (${r.status})`);
-  const a = attrs(r.body);
+const idOf = (rel: unknown): string => String(((rel as Rec)?.data as Rec | undefined)?.id ?? "");
+
+/** Reads one project resource (JSON:API {id, attributes, relationships}) into the fields the CRM uses. */
+export function toProject(resource: Rec): PylonProject {
+  const a = (resource.attributes ?? {}) as Rec;
   const cd = (a.customer_details ?? {}) as Rec;
   const sa = (a.site_address ?? {}) as Rec;
+  const rel = (resource.relationships ?? {}) as Rec;
   return {
     reference: String(a.reference_number ?? "").trim(),
     name: String(cd.name ?? "").trim(),
@@ -47,7 +52,38 @@ export async function getProject(id: string): Promise<PylonProject> {
     suburb: String(sa.city ?? ""),
     state: String(sa.state ?? "").trim().toUpperCase(),
     postcode: String(sa.zip ?? ""),
+    signedDesignId: idOf(rel.latest_signed_design) || undefined,
+    createdAt: typeof a.created_at === "string" ? a.created_at : undefined,
   };
+}
+
+export async function getProject(id: string): Promise<PylonProject> {
+  // Some Pylon endpoints insist on an explicit field list, so retry with one if the plain request is refused.
+  let r = await pylonGet(`solar_projects/${encodeURIComponent(id)}`);
+  if (!r.ok && r.status === 400) r = await pylonGet(`solar_projects/${encodeURIComponent(id)}?fields[solar_projects]=reference_number,customer_details,site_address`);
+  if (!r.ok) throw new Error(`Pylon project lookup failed (${r.status})`);
+  return toProject((r.body.data ?? r.body) as Rec);
+}
+
+/**
+ * Every project the customer has accepted (signed) since a date, newest first, following Pylon's own `links.next`
+ * (Pylon asks that paginated URLs are not built by hand). Capped so one request can't run away.
+ */
+export async function listAcceptedProjects(sinceIso: string | null, cap = 300): Promise<(PylonProject & { id: string })[]> {
+  const filters = [`filter[acceptance]=is_accepted`, `filter[is_archived]=any`, `sort=created_at.desc`];
+  if (sinceIso) filters.push(`filter[created_at.gte]=${encodeURIComponent(sinceIso)}`);
+  let url: string | null = `${API}/solar_projects?${filters.join("&")}`;
+  const out: (PylonProject & { id: string })[] = [];
+  let guard = 0;
+  while (url && out.length < cap && guard++ < 20) {
+    if (!url.startsWith(`${API}/`)) throw new Error("Unexpected pagination link from Pylon");
+    const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${env("PYLON_API_TOKEN")}`, Accept: "application/vnd.api+json" } });
+    const body: Rec = ((await res.json().catch(() => ({}))) as Rec) ?? {};
+    if (!res.ok) throw new Error(`Pylon project list failed (${res.status})`);
+    for (const item of (body.data as Rec[] | undefined) ?? []) out.push({ id: String(item.id), ...toProject(item) });
+    url = (body.links as Rec | undefined)?.next ? String((body.links as Rec).next) : null;
+  }
+  return out.slice(0, cap);
 }
 
 type Part = { description: string; sku: string; quantity: number };

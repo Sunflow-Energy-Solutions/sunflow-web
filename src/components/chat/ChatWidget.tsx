@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X, Send, Headset } from "lucide-react";
 import clsx from "clsx";
+import { getAttribution } from "@/lib/attribution";
 import { siteConfig } from "@/lib/site-config";
 
 type Message = { id: number; from: "bot" | "user"; text: string };
@@ -130,6 +131,7 @@ export default function ChatWidget() {
           phone: data.get("phone"),
           email: data.get("email"),
           message: data.get("message"),
+          attribution: getAttribution(),
           transcript: messages.filter((m) => m.from === "user").map((m) => m.text),
         }),
       });

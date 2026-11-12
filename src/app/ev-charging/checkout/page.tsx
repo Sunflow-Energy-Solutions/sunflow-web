@@ -6,6 +6,7 @@ import { CheckCircle2, ShoppingBag, Trash2 } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import AddressAutocomplete, { type AddressParts } from "@/components/forms/AddressAutocomplete";
+import { getAttribution } from "@/lib/attribution";
 import { useCart } from "@/lib/cart-context";
 
 function formatPrice(price: number) {
@@ -52,6 +53,7 @@ export default function QuoteRequestPage() {
           postcode: data.get("postcode"),
           notes: data.get("notes"),
           marketing: data.get("marketing") === "on",
+          attribution: getAttribution(),
           items: items.map(({ product, quantity }) => ({ name: product.name, quantity })),
           estimatedTotal: formatPrice(total),
         }),
