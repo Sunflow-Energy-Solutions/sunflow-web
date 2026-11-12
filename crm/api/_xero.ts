@@ -11,7 +11,7 @@ export const SCOPES = process.env.XERO_SCOPES ?? "offline_access accounting.cont
 
 export type Tokens = { access_token: string; refresh_token: string; expires_at: number; tenant_id: string; tenant_name: string };
 export type Auth = { token: string; tenant: string };
-export type ContactIn = { name: string; email?: string; phone?: string; address?: string; suburb?: string; postcode?: string };
+export type ContactIn = { name: string; email?: string; phone?: string; address?: string; suburb?: string; state?: string; postcode?: string };
 
 export const configured = () => !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
 export const redirectUri = () => `${env("APP_URL").replace(/\/$/, "")}/api/xero-callback`;
@@ -98,7 +98,7 @@ export async function findOrCreateContact(auth: Auth, c: ContactIn): Promise<str
         EmailAddress: c.email || undefined,
         Phones: c.phone ? [{ PhoneType: "MOBILE", PhoneNumber: c.phone }] : undefined,
         Addresses: c.address || c.suburb
-          ? [{ AddressType: "STREET", AddressLine1: c.address, City: c.suburb, Region: "VIC", PostalCode: c.postcode, Country: "Australia" }]
+          ? [{ AddressType: "STREET", AddressLine1: c.address, City: c.suburb, Region: c.state || "VIC", PostalCode: c.postcode, Country: "Australia" }]
           : undefined,
       }],
     }),

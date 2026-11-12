@@ -11,6 +11,8 @@ type Lead = {
   /** Full address as typed, or just the street if suburb/postcode are given separately */
   address?: string;
   suburb?: string;
+  /** State code if known (VIC, NSW...) */
+  state?: string;
   postcode?: string;
   services?: string[];
   notes?: string;
@@ -24,10 +26,12 @@ type Row = { id: string; kind: string; data: Record<string, unknown>; deleted: b
 
 const melbourneToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne" }).format(new Date());
 
-/** "12 Smith St, Berwick VIC 3806, Australia" -> street, suburb, postcode */
-function splitAddress(address: string): { street: string; suburb: string; postcode: string } {
-  const m = address.match(/^(.*?),\s*([^,]+?)\s+(?:VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\s+(\d{4})/i);
-  return m ? { street: m[1].trim(), suburb: m[2].trim(), postcode: m[3] } : { street: address.trim(), suburb: "", postcode: "" };
+/** "12 Smith St, Berwick VIC 3806, Australia" -> street, suburb, state, postcode */
+function splitAddress(address: string): { street: string; suburb: string; state: string; postcode: string } {
+  const m = address.match(/^(.*?),\s*([^,]+?)\s+(VIC|NSW|QLD|SA|WA|TAS|NT|ACT)\s+(\d{4})/i);
+  return m
+    ? { street: m[1].trim(), suburb: m[2].trim(), state: m[3].toUpperCase(), postcode: m[4] }
+    : { street: address.trim(), suburb: "", state: "", postcode: "" };
 }
 
 export async function pushLeadToCrm(lead: Lead): Promise<void> {
@@ -55,7 +59,7 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       }
     }
 
-    const parsed = lead.suburb || lead.postcode ? { street: lead.address ?? "", suburb: lead.suburb ?? "", postcode: lead.postcode ?? "" } : splitAddress(lead.address ?? "");
+    const parsed = lead.suburb || lead.postcode ? { street: lead.address ?? "", suburb: lead.suburb ?? "", state: lead.state ?? "", postcode: lead.postcode ?? "" } : splitAddress(lead.address ?? "");
     const [firstName, ...rest] = lead.name.trim().split(/\s+/);
     const rows: Row[] = [];
     const upsert = (kind: string, data: Record<string, unknown>) =>
@@ -72,7 +76,7 @@ export async function pushLeadToCrm(lead: Lead): Promise<void> {
       customerId = crypto.randomUUID();
       upsert("customer", {
         id: customerId, firstName: firstName ?? "", lastName: rest.join(" "), phone: lead.phone.trim(), email,
-        address: parsed.street, suburb: parsed.suburb, postcode: parsed.postcode, kind: "Residential", source: lead.source,
+        address: parsed.street, suburb: parsed.suburb, state: parsed.state || lead.state?.toUpperCase() || "VIC", postcode: parsed.postcode, kind: "Residential", source: lead.source,
         notes: "", marketingConsent: !!lead.marketingConsent, unsubscribed: false, createdAt: now, updatedAt: now,
       });
     }

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     : "";
 
   await pushLeadToCrm({
-    name: `${firstName} ${lastName}`, phone, email, address: street, suburb, postcode,
+    name: `${firstName} ${lastName}`, phone, email, address: street, suburb, state: typeof state === "string" ? state : undefined, postcode,
     services: ["EV charger"], notes: itemsSummary.split("\n").join(", "), source: "Website EV charger shop",
     marketingConsent: marketing === true,
   });

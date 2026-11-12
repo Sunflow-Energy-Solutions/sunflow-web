@@ -6,7 +6,7 @@ import { useXeroStatus, xeroCall } from "../xero";
 import { cloudEnabled, supabase } from "../cloud";
 import { demoData } from "../demo";
 import { useStore } from "../store";
-import { emptyDb, stageLabel, type Db } from "../types";
+import { AU_STATES, emptyDb, stageLabel, type Db } from "../types";
 import { csvEscape, download, fmtDate, fullName, nowIso, systemSummary, today, uid } from "../utils";
 
 function parseCsv(text: string): string[][] {
@@ -41,6 +41,7 @@ const HEADERS: Record<string, string[]> = {
   address: ["address", "street", "street address"],
   suburb: ["suburb", "city", "town"],
   postcode: ["postcode", "post code", "zip"],
+  state: ["state", "region", "province"],
   notes: ["notes", "note", "comments"],
 };
 
@@ -51,14 +52,14 @@ export default function Settings({ email }: { email?: string }) {
   const [msg, setMsg] = useState("");
 
   function exportCsv() {
-    const head = ["First name", "Last name", "Phone", "Email", "Address", "Suburb", "Postcode", "Type", "Source", "Email consent", "Stage", "System", "Price", "Install date", "Installed on", "Last quote", "Created"];
+    const head = ["First name", "Last name", "Phone", "Email", "Address", "Suburb", "State", "Postcode", "Type", "Source", "Email consent", "Stage", "System", "Price", "Install date", "Installed on", "Last quote", "Created"];
     const lines = [head.map(csvEscape).join(",")];
     for (const c of db.customers) {
       const deals = db.deals.filter((d) => d.customerId === c.id);
       const rows = deals.length ? deals : [undefined];
       for (const d of rows) {
         const q = d?.quotes.at(-1);
-        lines.push([c.firstName, c.lastName, c.phone, c.email, c.address, c.suburb, c.postcode, c.kind, c.source, c.marketingConsent ? "Yes" : "No",
+        lines.push([c.firstName, c.lastName, c.phone, c.email, c.address, c.suburb, c.state ?? "", c.postcode, c.kind, c.source, c.marketingConsent ? "Yes" : "No",
           d ? stageLabel(d.stage) : "", d ? systemSummary(d) : "", d?.value ?? "", d?.installDate ?? "", d?.installedOn ?? "",
           q ? `${q.number} ${q.date} $${q.amount ?? ""}` : "", c.createdAt.slice(0, 10)].map(csvEscape).join(","));
       }
@@ -104,7 +105,7 @@ export default function Settings({ email }: { email?: string }) {
       const digits = phone.replace(/\D/g, "");
       if ((!first && !last) || (digits && existing.has(digits))) { skipped++; continue; }
       if (digits) existing.add(digits);
-      addCustomer({ firstName: first, lastName: last, phone, email: get("email"), address: get("address"), suburb: get("suburb"), postcode: get("postcode"), notes: get("notes"), source: "Imported" });
+      addCustomer({ firstName: first, lastName: last, phone, email: get("email"), address: get("address"), suburb: get("suburb"), state: AU_STATES.includes(get("state").toUpperCase()) ? get("state").toUpperCase() : "VIC", postcode: get("postcode"), notes: get("notes"), source: "Imported" });
       added++;
     }
     setMsg(`Imported ${added} customers${skipped ? `, skipped ${skipped} (blank or already in the CRM)` : ""}. Email consent is off for imported people - tick it only where they have agreed.`);

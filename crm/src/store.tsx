@@ -222,7 +222,7 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
     const addCustomer: Store["addCustomer"] = (c) => {
       const t = stamp();
       const customer: Customer = {
-        id: uid(), firstName: "", lastName: "", phone: "", email: "", address: "", suburb: "", postcode: "",
+        id: uid(), firstName: "", lastName: "", phone: "", email: "", address: "", suburb: "", postcode: "", state: "VIC",
         kind: "Residential", source: "Phone call", notes: "", marketingConsent: false, unsubscribed: false,
         createdAt: t, updatedAt: t, ...c,
       };

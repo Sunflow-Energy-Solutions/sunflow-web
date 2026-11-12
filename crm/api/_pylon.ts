@@ -28,7 +28,7 @@ async function pylonGet(path: string): Promise<{ ok: boolean; status: number; bo
 
 const attrs = (b: Rec): Rec => (b.data?.attributes ?? b.attributes ?? {}) as Rec;
 
-export type PylonProject = { reference: string; name: string; email: string; phone: string; address: string; suburb: string; postcode: string };
+export type PylonProject = { reference: string; name: string; email: string; phone: string; address: string; suburb: string; state: string; postcode: string };
 
 export async function getProject(id: string): Promise<PylonProject> {
   // Some Pylon endpoints insist on an explicit field list, so retry with one if the plain request is refused.
@@ -45,6 +45,7 @@ export async function getProject(id: string): Promise<PylonProject> {
     phone: String(cd.phone ?? "").trim(),
     address: [sa.line1, sa.line2].filter(Boolean).join(", "),
     suburb: String(sa.city ?? ""),
+    state: String(sa.state ?? "").trim().toUpperCase(),
     postcode: String(sa.zip ?? ""),
   };
 }

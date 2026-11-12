@@ -119,7 +119,7 @@ export function buildIcs(db: Db, events: CalEvent[]): string {
     lines.push(`SUMMARY:${ics(`${e.label}: ${e.title}`)}`);
     const desc = [e.sub, c?.phone && `Phone ${c.phone}`].filter(Boolean).join("\n");
     if (desc) lines.push(`DESCRIPTION:${ics(desc)}`);
-    const loc = c ? [c.address, c.suburb, c.postcode].filter(Boolean).join(", ") : "";
+    const loc = c ? [c.address, c.suburb, [c.state, c.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "";
     if (loc) lines.push(`LOCATION:${ics(loc)}`);
     lines.push("END:VEVENT");
   }

@@ -51,6 +51,8 @@ async function handle(request: Request): Promise<Response> {
 
   const suburb = pick(body, ["suburb", "city", "town"]);
   const postcode = pick(body, ["postcode", "post_code", "zip", "zip_code", "postal_code"]);
+  const stateRaw = pick(body, ["state", "region", "province"]).toUpperCase();
+  const state = ["VIC", "NSW", "QLD", "SA", "WA", "TAS", "ACT", "NT"].includes(stateRaw) ? stateRaw : "VIC";
   const address = pick(body, ["address", "street_address", "street"]);
   const message = pick(body, ["message", "notes", "comments", "comment", "enquiry", "tell_us_more"]);
   const interest = pick(body, ["services", "interest", "interested_in", "product", "what_are_you_interested_in"]);
@@ -68,7 +70,7 @@ async function handle(request: Request): Promise<Response> {
     // A new "yes" upgrades consent; it never overrides someone who has unsubscribed.
     if (consent && !existing.marketingConsent && !existing.unsubscribed) save("customer", { ...existing, marketingConsent: true, updatedAt: new Date().toISOString() });
   } else {
-    customer = newCustomer({ name, phone, email, address, suburb, postcode, source, consent });
+    customer = newCustomer({ name, phone, email, address, suburb, state, postcode, source, consent });
     save("customer", customer);
   }
 

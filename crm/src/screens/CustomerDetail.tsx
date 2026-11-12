@@ -69,7 +69,7 @@ export default function CustomerDetail({ id }: { id: string }) {
         <dl className="mt-4 space-y-1.5 text-sm">
           {c.phone && <Row k="Phone" v={c.phone} />}
           {c.email && <Row k="Email" v={c.email} />}
-          {(c.address || c.postcode) && <Row k="Address" v={[c.address, c.suburb, c.postcode].filter(Boolean).join(", ")} />}
+          {(c.address || c.postcode) && <Row k="Address" v={[c.address, c.suburb, [c.state, c.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ")} />}
           {c.assignedTo && db.staff.find((s) => s.id === c.assignedTo) && <Row k="Looked after by" v={db.staff.find((s) => s.id === c.assignedTo)!.name} />}
           <Row k="Marketing" v={c.unsubscribed ? "Unsubscribed" : c.marketingConsent ? "OK to email specials" : "No consent recorded"} />
           {c.notes && <Row k="Notes" v={c.notes} />}

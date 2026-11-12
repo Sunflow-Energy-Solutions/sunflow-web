@@ -4,10 +4,10 @@ import { useEffect, useId, useRef, useState } from "react";
 
 /**
  * Street address box with Google address suggestions (Places API New), biased to Melbourne and limited to Australia.
- * Choosing a suggestion fills the street, suburb and postcode. With no VITE_GOOGLE_PLACES_API_KEY (or if Google can't be
+ * Choosing a suggestion fills the street, suburb, state and postcode. With no VITE_GOOGLE_PLACES_API_KEY (or if Google can't be
  * reached) it is simply a normal text box.
  */
-export type AddressParts = { street: string; suburb: string; postcode: string };
+export type AddressParts = { street: string; suburb: string; state: string; postcode: string };
 
 type Suggestion = { placeId: string; main: string; secondary: string; full: string };
 type Component = { longText: string; shortText: string; types: string[] };
@@ -15,7 +15,10 @@ type Component = { longText: string; shortText: string; types: string[] };
 const API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY as string | undefined;
 const MELBOURNE = { latitude: -37.8136, longitude: 144.9631 };
 
-const pick = (c: Component[], type: string) => c.find((x) => x.types.includes(type))?.longText ?? "";
+const pick = (c: Component[], type: string, short = false) => {
+  const found = c.find((x) => x.types.includes(type));
+  return found ? (short ? found.shortText : found.longText) : "";
+};
 
 function toParts(components: Component[]): AddressParts {
   const unit = pick(components, "subpremise");
@@ -24,6 +27,7 @@ function toParts(components: Component[]): AddressParts {
   return {
     street: [unit && number ? `${unit}/${number}` : number || unit, route].filter(Boolean).join(" "),
     suburb: pick(components, "locality") || pick(components, "sublocality") || pick(components, "postal_town"),
+    state: pick(components, "administrative_area_level_1", true),
     postcode: pick(components, "postal_code"),
   };
 }

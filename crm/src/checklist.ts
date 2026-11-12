@@ -113,7 +113,7 @@ export function printChecklist(customer?: Customer, deal?: Deal) {
   if (extra.length) groups.push({ gr: "Other", rows: extra });
 
   const head = customer && deal
-    ? `<p><b>${esc(fullName(customer))}</b> &middot; ${esc([customer.address, customer.suburb, customer.postcode].filter(Boolean).join(", "))}<br>${esc(customer.phone)} &middot; ${esc(systemSummary(deal) || deal.title)}${deal.installDate ? ` &middot; Install ${fmtDate(deal.installDate)}` : ""}</p>`
+    ? `<p><b>${esc(fullName(customer))}</b> &middot; ${esc([customer.address, customer.suburb, [customer.state, customer.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", "))}<br>${esc(customer.phone)} &middot; ${esc(systemSummary(deal) || deal.title)}${deal.installDate ? ` &middot; Install ${fmtDate(deal.installDate)}` : ""}</p>`
     : `<p>Customer: ______________________ &nbsp; Address: ____________________________________ &nbsp; Install date: ___________</p>`;
 
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Sunflow job paperwork checklist</title>

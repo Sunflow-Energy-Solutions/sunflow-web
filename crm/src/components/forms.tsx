@@ -4,7 +4,7 @@ import { installClashes } from "../events";
 import { useStore } from "../store";
 import { xeroCall } from "../xero";
 import {
-  SOURCES, TASK_KINDS, emptyInstall, emptySite, emptySystem,
+  AU_STATES, SOURCES, TASK_KINDS, emptyInstall, emptySite, emptySystem,
   type Customer, type Deal, type InstallRecord, type Quote, type SiteDetails, type Task, type TaskKind,
 } from "../types";
 import { addDays, fullName, today, uid } from "../utils";
@@ -43,6 +43,7 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
     address: customer?.address ?? "",
     suburb: customer?.suburb ?? "",
     postcode: customer?.postcode ?? "",
+    state: customer?.state ?? "VIC",
     kind: customer?.kind ?? ("Residential" as Customer["kind"]),
     source: customer?.source ?? "Phone call",
     notes: customer?.notes ?? "",
@@ -110,17 +111,22 @@ export function CustomerSheet({ customer, onClose, onSaved }: { customer?: Custo
           </p>
         )}
         <Field label="Email"><Input type="email" inputMode="email" value={f.email} onChange={(e) => set("email", e.target.value)} autoCapitalize="off" /></Field>
-        <Field label="Street address" hint={HAS_PLACES ? "Start typing and pick the address - suburb and postcode fill in for you." : undefined}>
+        <Field label="Street address" hint={HAS_PLACES ? "Start typing and pick the address - suburb, state and postcode fill in for you." : undefined}>
           <AddressInput
             value={f.address}
             onChange={(v) => set("address", v)}
-            onSelect={(p) => setF((x) => ({ ...x, address: p.street || x.address, suburb: p.suburb || x.suburb, postcode: p.postcode || x.postcode }))}
+            onSelect={(p) => setF((x) => ({ ...x, address: p.street || x.address, suburb: p.suburb || x.suburb, state: AU_STATES.includes(p.state) ? p.state : x.state, postcode: p.postcode || x.postcode }))}
             className={inputCls}
             placeholder="e.g. 12 Smith Street"
           />
         </Field>
-        <div className="grid grid-cols-[1fr_7rem] gap-3">
+        <div className="grid grid-cols-[1fr_5.5rem_6.5rem] gap-3">
           <Field label="Suburb"><Input value={f.suburb} onChange={(e) => set("suburb", e.target.value)} /></Field>
+          <Field label="State">
+            <Select value={f.state} onChange={(e) => set("state", e.target.value)} className="px-2">
+              {AU_STATES.map((s) => <option key={s}>{s}</option>)}
+            </Select>
+          </Field>
           <Field label="Postcode"><Input inputMode="numeric" value={f.postcode} onChange={(e) => set("postcode", e.target.value)} maxLength={4} /></Field>
         </div>
 
@@ -454,7 +460,7 @@ export function XeroSheet({ deal, customer, onClose }: { deal: Deal; customer: C
     setErr("");
     try {
       const r = await xeroCall<{ invoiceId: string; url: string }>("invoice", {
-        contact: { name: fullName(customer), email: customer.email, phone: customer.phone, address: customer.address, suburb: customer.suburb, postcode: customer.postcode },
+        contact: { name: fullName(customer), email: customer.email, phone: customer.phone, address: customer.address, suburb: customer.suburb, state: customer.state, postcode: customer.postcode },
         amount: Number(amount),
         description: desc,
         reference: deal.title,

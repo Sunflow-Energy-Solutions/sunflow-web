@@ -85,7 +85,7 @@ async function signed(a: Rec, designId: string, projectId: string): Promise<Resp
     createdNew = true;
     customer = newCustomer({
       name: project.name || String(a.customer_name ?? "Pylon customer"), phone: project.phone, email: project.email || String(a.customer_email ?? ""),
-      address: project.address, suburb: project.suburb, postcode: project.postcode, source: "Pylon",
+      address: project.address, suburb: project.suburb, state: project.state, postcode: project.postcode, source: "Pylon",
     });
     rows.push(row("customer", customer));
   } else {
@@ -96,6 +96,7 @@ async function signed(a: Rec, designId: string, projectId: string): Promise<Resp
     if (!customer.address && project.address) fill.address = project.address;
     if (!customer.suburb && project.suburb) fill.suburb = project.suburb;
     if (!customer.postcode && project.postcode) fill.postcode = project.postcode;
+    if (!customer.state && project.state) fill.state = project.state;
     if (Object.keys(fill).length) rows.push(row("customer", { ...customer, ...fill, updatedAt: t }));
   }
   if (!deal) deal = newDeal(String(customer.id), { stage: "new" });

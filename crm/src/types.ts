@@ -23,6 +23,8 @@ export type Customer = {
   address: string;
   suburb: string;
   postcode: string;
+  /** Australian state or territory (VIC, NSW...). Older customers have none, which is treated as VIC. */
+  state?: string;
   kind: "Residential" | "Commercial";
   source: string;
   notes: string;
@@ -263,6 +265,8 @@ export const emptyDb = (): Db => ({ customers: [], deals: [], tasks: [], notes: 
 export const emptySystem = (): SystemChoice => ({
   solarKw: null, panelBrand: "", batteryKwh: null, batteryBrand: "", inverterBrand: "", evCharger: "",
 });
+
+export const AU_STATES = ["VIC", "NSW", "QLD", "SA", "WA", "TAS", "ACT", "NT"];
 
 export const SOURCES = [
   "Website quote form", "Phone call", "Referral", "Facebook / Instagram", "Google",

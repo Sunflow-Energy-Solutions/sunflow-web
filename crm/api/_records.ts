@@ -49,12 +49,12 @@ export async function openAutoTasks(dealId: string): Promise<Rec[]> {
 
 const emptySystem = () => ({ solarKw: null, panelBrand: "", batteryKwh: null, batteryBrand: "", inverterBrand: "", evCharger: "" });
 
-export function newCustomer(c: { name: string; phone?: string; email?: string; address?: string; suburb?: string; postcode?: string; source: string; consent?: boolean; notes?: string }): Rec {
+export function newCustomer(c: { name: string; phone?: string; email?: string; address?: string; suburb?: string; state?: string; postcode?: string; source: string; consent?: boolean; notes?: string }): Rec {
   const [first = "", ...rest] = c.name.trim().split(/\s+/);
   const t = nowIso();
   return {
     id: crypto.randomUUID(), firstName: first, lastName: rest.join(" "), phone: (c.phone ?? "").trim(), email: (c.email ?? "").trim(),
-    address: c.address ?? "", suburb: c.suburb ?? "", postcode: c.postcode ?? "", kind: "Residential", source: c.source, notes: c.notes ?? "",
+    address: c.address ?? "", suburb: c.suburb ?? "", state: c.state || "VIC", postcode: c.postcode ?? "", kind: "Residential", source: c.source, notes: c.notes ?? "",
     marketingConsent: !!c.consent, unsubscribed: false, createdAt: t, updatedAt: t,
   };
 }

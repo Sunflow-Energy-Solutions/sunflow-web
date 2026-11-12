@@ -98,9 +98,9 @@ export const initials = (c: Pick<Customer, "firstName" | "lastName">) =>
 /** Strip to digits so "0412 345 678" is a valid tel: link and matches searches. */
 export const telHref = (p: string) => `tel:${p.replace(/[^\d+]/g, "")}`;
 export const smsHref = (p: string) => `sms:${p.replace(/[^\d+]/g, "")}`;
-export const mapsHref = (c: Pick<Customer, "address" | "suburb" | "postcode">) =>
+export const mapsHref = (c: Pick<Customer, "address" | "suburb" | "postcode" | "state">) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    [c.address, c.suburb, c.postcode, "VIC"].filter(Boolean).join(", "),
+    [c.address, c.suburb, c.state || "VIC", c.postcode].filter(Boolean).join(", "),
   )}`;
 
 /**
@@ -109,7 +109,7 @@ export const mapsHref = (c: Pick<Customer, "address" | "suburb" | "postcode">) =
  * Pylon project, so the job (deal) id is used. Returns null when there's no address to search.
  */
 export function pylonLink(c: Customer, deal: Deal): string | null {
-  const address = [c.address, c.suburb, c.postcode && `VIC ${c.postcode}`].filter(Boolean).join(", ");
+  const address = [c.address, c.suburb, [c.state || "VIC", c.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   if (!c.address.trim() && !c.suburb.trim()) return null;
   const u = new URL("https://app.getpylon.com/map/address");
   u.searchParams.set("search", address);
