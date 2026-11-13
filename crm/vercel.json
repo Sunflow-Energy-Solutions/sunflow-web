@@ -3,6 +3,18 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/pylon-import.ts": { "maxDuration": 60 }
-  }
+    "api/pylon-import.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/daily-report",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/daily-report",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { CalendarCheck, CalendarDays, Home, KanbanSquare, Mail, MoreHorizontal, Plus, Users } from "lucide-react";
+import { BarChart3, CalendarCheck, CalendarDays, Home, KanbanSquare, Mail, MoreHorizontal, Plus, Users } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { CustomerSheet } from "./components/forms";
 import { cloudEnabled, supabase } from "./cloud";
@@ -9,6 +9,7 @@ import CustomerDetail from "./screens/CustomerDetail";
 import Login from "./screens/Login";
 import Pipeline from "./screens/Pipeline";
 import Settings from "./screens/Settings";
+import Reports from "./screens/Reports";
 import Sources from "./screens/Sources";
 import Specials from "./screens/Specials";
 import Tasks from "./screens/Tasks";
@@ -34,6 +35,7 @@ const NAV = [
   { href: "#/calendar", label: "Calendar", icon: CalendarDays },
   { href: "#/pipeline", label: "Pipeline", icon: KanbanSquare },
   { href: "#/tasks", label: "Follow-ups", icon: CalendarCheck },
+  { href: "#/reports", label: "Reports", icon: BarChart3, desktopOnly: true },
   { href: "#/specials", label: "Specials", icon: Mail, desktopOnly: true },
   { href: "#/settings", label: "More", icon: MoreHorizontal },
 ];
@@ -54,6 +56,7 @@ function Shell({ email }: { email?: string }) {
   else if (path === "/tasks") page = <Tasks />;
   else if (path === "/specials" && me.isAdmin) page = <Specials />;
   else if (path === "/sources") page = <Sources />;
+  else if (path === "/reports") page = <Reports />;
   else if (path === "/settings") page = <Settings email={email} />;
   else page = <Today />;
 

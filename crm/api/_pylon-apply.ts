@@ -94,6 +94,7 @@ export async function applySigned(o: {
     },
     pylonUrl: deal.pylonUrl || o.projectUrl || "",
     pylon: { projectId, designId, signedAt: o.signedAt || t },
+    stageLog: wasStage === "won" || wasStage === "installed" ? deal.stageLog : [...((deal.stageLog as Rec[] | undefined) ?? []), { stage: "won", at: o.signedAt || t }],
     updatedAt: t,
   };
   rows.push(row("deal", nextDeal, false, ownerOf(customer)));

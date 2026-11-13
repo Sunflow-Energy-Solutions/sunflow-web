@@ -2,6 +2,7 @@ import { BarChart3, Cloud, CloudOff, Download, LogOut, Mail, Printer, RefreshCw,
 import { useEffect, useRef, useState } from "react";
 import { printChecklist } from "../checklist";
 import { Button, Card, Field, Input, PageHeader, SectionTitle, Select, Textarea } from "../components/ui";
+import { callApi } from "../api";
 import { useXeroStatus, xeroCall } from "../xero";
 import PylonImport from "./PylonImport";
 import { cloudEnabled, supabase } from "../cloud";
@@ -151,6 +152,7 @@ export default function Settings({ email }: { email?: string }) {
 
       <SectionTitle>Reports</SectionTitle>
       <Card className="divide-y divide-mist-100">
+        <ActionRow icon={<BarChart3 className="size-5" />} title="Business report" sub="Enquiries, quotes, jobs won, pipeline, charts and detail" onClick={() => (location.hash = "#/reports")} />
         <ActionRow icon={<BarChart3 className="size-5" />} title="Lead sources" sub="Where enquiries come from and which ads turn into jobs" onClick={() => (location.hash = "#/sources")} />
       </Card>
 
@@ -167,6 +169,7 @@ export default function Settings({ email }: { email?: string }) {
         </>
       )}
       {me.isAdmin && <ThanksSettings />}
+      {me.isAdmin && <ReportSettings />}
       {me.isAdmin && <XeroSection />}
 
       {me.isAdmin && (
@@ -398,6 +401,56 @@ function ThanksSettings() {
           <Button onClick={() => { saveSettings(f); setSaved(true); }}>Save</Button>
           {saved && <span className="text-sm font-medium text-emerald-700">Saved - the whole team now uses this.</span>}
         </div>
+      </Card>
+    </>
+  );
+}
+
+/** The automatic end-of-day report: who gets it, which days, plus a button to send a test to yourself. */
+function ReportSettings() {
+  const { settings, saveSettings } = useStore();
+  const [f, setF] = useState({ reportEnabled: settings.reportEnabled, reportRecipients: settings.reportRecipients, reportDays: settings.reportDays });
+  const [saved, setSaved] = useState(false);
+  const [test, setTest] = useState<{ busy: boolean; msg: string; bad: boolean }>({ busy: false, msg: "", bad: false });
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => { setF((x) => ({ ...x, [k]: v })); setSaved(false); };
+  const emails = f.reportRecipients.split(/[\s,;]+/).filter(Boolean);
+  const invalid = emails.filter((e) => !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(e));
+
+  async function sendTest() {
+    setTest({ busy: true, msg: "", bad: false });
+    try {
+      const r = await callApi<{ to: string }>("/api/daily-report", {});
+      setTest({ busy: false, msg: `Sent to ${r.to}. Check your inbox (and junk) in a minute.`, bad: false });
+    } catch (e) {
+      setTest({ busy: false, msg: e instanceof Error ? e.message : "Could not send.", bad: true });
+    }
+  }
+
+  return (
+    <>
+      <SectionTitle>End-of-day report</SectionTitle>
+      <Card className="space-y-3.5 p-4">
+        <label className="flex min-h-11 items-center gap-3 text-sm font-semibold">
+          <input type="checkbox" className="size-5" checked={f.reportEnabled} onChange={(e) => set("reportEnabled", e.target.checked)} />
+          Email me a summary of the day at about 6pm
+        </label>
+        <Field label="Who gets it" hint="One or more email addresses, separated by commas. Up to 10.">
+          <Textarea rows={2} value={f.reportRecipients} onChange={(e) => set("reportRecipients", e.target.value)} placeholder="you@example.com, manager@example.com" autoCapitalize="off" />
+        </Field>
+        {invalid.length > 0 && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">These don't look like email addresses and will be left out: {invalid.join(", ")}</p>}
+        <Field label="Which days">
+          <Select value={f.reportDays} onChange={(e) => set("reportDays", e.target.value as "weekdays" | "daily")}>
+            <option value="weekdays">Monday to Friday</option>
+            <option value="daily">Every day</option>
+          </Select>
+        </Field>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => { saveSettings(f); setSaved(true); }}>Save</Button>
+          {cloudEnabled && <Button variant="soft" onClick={sendTest} disabled={test.busy}>{test.busy ? "Sending..." : "Send a test to me"}</Button>}
+          {saved && <span className="text-sm font-medium text-emerald-700">Saved.</span>}
+        </div>
+        {test.msg && <p className={test.bad ? "text-sm text-red-700" : "text-sm font-medium text-emerald-700"}>{test.msg}</p>}
+        <p className="text-xs text-mist-500">Shows the day's enquiries, quotes, jobs won and installs, what needs attention, installs coming up, and the week and month so far.</p>
       </Card>
     </>
   );

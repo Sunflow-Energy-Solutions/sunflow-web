@@ -148,6 +148,12 @@ land as a New lead with a call-today reminder. Repeat enquiries with the same em
 7. Pylon's delivery log (in the same API settings) shows whether each event reached the CRM; failures are retried for about 31 hours.
 Prices come across exactly as Pylon states them on the proposal; check GST treatment against your first real signed job.
 
+### 7. Reports and the end-of-day email
+
+**More -> Business report** (and **Reports** in the desktop menu) shows enquiries, quotes, jobs won, win rate, installs and the pipeline for any period (today, this week, last 90 days...), compared with the previous period, with charts, a table view of every chart, detail lists and a CSV export. Admins and staff can narrow it to one person's customers; limited logins only ever see their own.
+
+The automatic email is set up under **More -> End-of-day report** (admin): tick the box, add one or more addresses, choose weekdays or every day, and press **Send a test to me**. It is sent at about 6pm Melbourne time by two Vercel cron jobs (07:00 and 08:00 UTC; only one matches 6pm, summer or winter). One extra variable is needed in the CRM Vercel project: `CRON_SECRET` (any long random text). Vercel then sends it with each cron call, so nobody else can trigger the email.
+
 ### 8. Put it on each phone
 Open the CRM address, sign in, then iPhone: Safari -> Share -> **Add to Home Screen**. Android: Chrome -> menu -> **Install app**.
 

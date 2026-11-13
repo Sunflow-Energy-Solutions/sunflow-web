@@ -337,6 +337,7 @@ export function StoreProvider({ children, signedIn, email }: { children: ReactNo
       if (!cur || cur.stage === stage) return;
       const next: Deal = {
         ...cur, ...extra, stage, updatedAt: stamp(),
+        stageLog: [...(cur.stageLog ?? []), { stage, at: stamp() }],
         installedOn: stage === "installed" ? (extra.installedOn ?? cur.installedOn ?? today()) : cur.installedOn,
       };
       // The paperwork checklist starts once the customer says yes.

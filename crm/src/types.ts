@@ -126,6 +126,8 @@ export type Deal = {
   checklist?: CheckItem[];
   /** Template keys the team removed from this job, so a system change doesn't add them back */
   checklistSkipped?: string[];
+  /** When each stage was reached, so reports can say "won this week". Older jobs without it are worked out from their history notes. */
+  stageLog?: { stage: Stage; at: string }[];
   /** Where this enquiry came from (one of SOURCES, or "Facebook / Instagram ad" etc.) and the ad campaign, if known */
   source?: string;
   campaign?: string;
@@ -230,6 +232,12 @@ export type AppSettings = {
   thankYouSubject: string;
   thankYouBody: string;
   thankYouSms: string;
+  /** Automatic end-of-day report email (sent about 6pm Melbourne time) */
+  reportEnabled: boolean;
+  /** Comma-separated email addresses that get it (managers, yourself) */
+  reportRecipients: string;
+  /** "weekdays" = Monday to Friday, "daily" = every day */
+  reportDays: "weekdays" | "daily";
   createdAt: string;
   updatedAt: string;
 };
@@ -247,6 +255,9 @@ export const defaultSettings = (): AppSettings => ({
     "Hi {{firstName}},\n\nThank you for choosing Sunflow Energy Solutions for your {{system}}. We hope you are loving it!\n\nIf you are happy with our work, a short review would mean a lot to our small team and helps other households find us. It takes about a minute.\n\nIf anything is not right, just reply to this email or call us on (03) 9088 0322 and we will sort it out.\n\nThanks again,\nThe Sunflow team",
   thankYouSms:
     "Hi {{firstName}}, thanks for choosing Sunflow Energy Solutions! If you are happy with your {{system}}, a quick review would mean a lot: {{reviewLink}} Any issues, call us on (03) 9088 0322.",
+  reportEnabled: false,
+  reportRecipients: "",
+  reportDays: "weekdays",
   createdAt: "",
   updatedAt: "",
 });
