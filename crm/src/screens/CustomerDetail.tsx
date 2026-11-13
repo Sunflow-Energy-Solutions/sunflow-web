@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarPlus, Copy, ExternalLink, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, Copy, ExternalLink, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Checklist from "../components/Checklist";
 import Files from "../components/Files";
@@ -280,7 +280,7 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
       {!["new", "lost"].includes(deal.stage) && (
         <div className="mt-3 flex items-center gap-2 rounded-xl bg-mist-50 px-3 py-2 text-xs text-mist-500">
           <span className="flex-1">CRM job ID for Bridge Select (paste into External Software Package ID): <b className="select-all break-all text-navy-900">{deal.id}</b></span>
-          <Button size="sm" variant="soft" onClick={() => navigator.clipboard?.writeText(deal.id).catch(() => {})}><Copy className="size-4" /> Copy</Button>
+          <CopyButton text={deal.id} />
         </div>
       )}
 
@@ -374,6 +374,19 @@ const Pair = ({ k, v }: { k: string; v: string }) => (
 );
 
 /** Compact read-out of the site details and install record entered under Edit. */
+/** Copies text and says so: the button turns green and reads "Copied" for two seconds. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 2000); } catch { alert("Could not copy automatically. Press and hold the ID to copy it."); }
+  }
+  return (
+    <button type="button" onClick={copy} aria-live="polite" className={done ? "inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white" : "inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-mist-100 px-3 text-sm font-semibold text-navy-900 hover:bg-mist-200"}>
+      {done ? <Check className="size-4" /> : <Copy className="size-4" />} {done ? "Copied" : "Copy"}
+    </button>
+  );
+}
+
 function SiteSummary({ deal }: { deal: Deal }) {
   const s = deal.site;
   const i = deal.install;
