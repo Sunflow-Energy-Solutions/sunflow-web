@@ -24,6 +24,16 @@ export type ApplyResult = { status: "updated" | "created" | "duplicate"; dealId:
  * Used by the live webhook and by the import of jobs that were signed before the webhook existed.
  * Safe to repeat: the same signed design is never applied twice.
  */
+/** Every part on the design, tagged with what it is. */
+function equipmentOf(design: { panels: Rec[]; inverters: Rec[]; batteries: Rec[]; evChargers: Rec[] }) {
+  return [
+    ...design.panels.map((p) => ({ category: "Panels", ...p })),
+    ...design.inverters.map((p) => ({ category: "Inverter", ...p })),
+    ...design.batteries.map((p) => ({ category: "Battery", ...p })),
+    ...design.evChargers.map((p) => ({ category: "EV charger", ...p })),
+  ];
+}
+
 export async function applySigned(o: {
   project: PylonProject;
   projectId: string;
@@ -39,6 +49,10 @@ export async function applySigned(o: {
   let { deal, customer } = await matchDeal(project, o.eventEmail ?? "");
 
   if (deal?.pylon?.designId === designId && deal.pylon?.signedAt) {
+    // Already imported: just fill in the equipment list if this job was imported before it was stored.
+    if (!deal.equipment && customer) {
+      await saveRows([row("deal", { ...deal, equipment: equipmentOf(design), updatedAt: nowIso() }, false, ownerOf(customer))]);
+    }
     return { status: "duplicate", dealId: String(deal.id), customerId: String(deal.customerId), title: String(deal.title ?? ""), customerName: `${customer?.firstName ?? ""} ${customer?.lastName ?? ""}`.trim(), newCustomer: false };
   }
 
@@ -92,6 +106,7 @@ export async function applySigned(o: {
       inverterModel: design.inverters[0]?.description ?? deal.install?.inverterModel ?? "",
       batteryModel: design.batteries[0]?.description ?? deal.install?.batteryModel ?? "",
     },
+    equipment: equipmentOf(design),
     pylonUrl: deal.pylonUrl || o.projectUrl || "",
     pylon: { projectId, designId, signedAt: o.signedAt || t },
     stageLog: wasStage === "won" || wasStage === "installed" ? deal.stageLog : [...((deal.stageLog as Rec[] | undefined) ?? []), { stage: "won", at: o.signedAt || t }],

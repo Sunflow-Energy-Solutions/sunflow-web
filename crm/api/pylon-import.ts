@@ -19,7 +19,8 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 async function alreadyImported(projectId: string): Promise<boolean> {
-  const res = await sb(`records?kind=eq.deal&deleted=eq.false&select=id&data->pylon->>projectId=eq.${encodeURIComponent(projectId)}`);
+  // Jobs imported before equipment lists were stored count as not yet imported, so running the import again fills the list in.
+  const res = await sb(`records?kind=eq.deal&deleted=eq.false&select=id&data->pylon->>projectId=eq.${encodeURIComponent(projectId)}&data->equipment=not.is.null`);
   return res.ok && ((await res.json()) as unknown[]).length > 0;
 }
 

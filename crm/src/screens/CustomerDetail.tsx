@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarPlus, ExternalLink, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Copy, ExternalLink, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Checklist from "../components/Checklist";
 import Files from "../components/Files";
@@ -261,6 +261,27 @@ function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; cus
         <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
           Customer signed this design in Pylon on {fmtDate(deal.pylon.signedAt)} - details above came from the signed proposal.
         </p>
+      )}
+
+      {deal.equipment && deal.equipment.length > 0 && (
+        <div className="mt-3 rounded-xl bg-mist-50 px-3 py-2.5 text-sm">
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-mist-500">Equipment on the signed design</div>
+          <ul className="divide-y divide-mist-100">
+            {deal.equipment.map((e, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 py-1.5">
+                <span className="min-w-0"><span className="text-xs text-mist-500">{e.category}</span><br /><span className="font-medium">{e.description || "(no description)"}</span>{e.sku ? <span className="text-xs text-mist-500"> · {e.sku}</span> : null}</span>
+                <span className="shrink-0 font-bold tabular-nums">x {e.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {!["new", "lost"].includes(deal.stage) && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-mist-50 px-3 py-2 text-xs text-mist-500">
+          <span className="flex-1">CRM job ID for Bridge Select (paste into External Software Package ID): <b className="select-all break-all text-navy-900">{deal.id}</b></span>
+          <Button size="sm" variant="soft" onClick={() => navigator.clipboard?.writeText(deal.id).catch(() => {})}><Copy className="size-4" /> Copy</Button>
+        </div>
       )}
 
       {(deal.site || deal.install) && <SiteSummary deal={deal} />}

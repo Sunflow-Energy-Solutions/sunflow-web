@@ -46,6 +46,8 @@ export type SystemChoice = {
   evCharger: string;
 };
 
+export type EquipmentItem = { category: "Panels" | "Inverter" | "Battery" | "EV charger"; description: string; sku: string; quantity: number };
+
 export type SiteDetails = {
   distributor: string; // network the home connects to (AusNet, CitiPower...)
   nmi: string;
@@ -133,6 +135,8 @@ export type Deal = {
   campaign?: string;
   /** Set when the customer e-signed a Pylon proposal: which design was signed, and when */
   pylon?: { projectId: string; designId: string; signedAt: string };
+  /** Every item on the signed Pylon design (panels, inverters, batteries, EV chargers) with its model description, SKU and quantity */
+  equipment?: EquipmentItem[];
   xero?: XeroInvoice[];
   /** When a thank-you / review request went to the customer, and how */
   thanks?: { sentAt: string; by: string; channels: ("email" | "sms")[] } | null;
