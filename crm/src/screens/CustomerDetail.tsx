@@ -69,7 +69,7 @@ export default function CustomerDetail({ id }: { id: string }) {
         <dl className="mt-4 space-y-1.5 text-sm">
           {c.phone && <Row k="Phone" v={c.phone} />}
           {c.email && <Row k="Email" v={c.email} />}
-          {(c.address || c.postcode) && <Row k="Address" v={[c.address, c.suburb, [c.state, c.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ")} />}
+          {(c.address || c.postcode) && <Row k="Address" href={mapsHref(c)} v={[c.address, c.suburb, [c.state, c.postcode].filter(Boolean).join(" ")].filter(Boolean).join(", ")} />}
           {c.assignedTo && db.staff.find((s) => s.id === c.assignedTo) && <Row k="Looked after by" v={db.staff.find((s) => s.id === c.assignedTo)!.name} />}
           <Row k="Marketing" v={c.unsubscribed ? "Unsubscribed" : c.marketingConsent ? "OK to email specials" : "No consent recorded"} />
           {c.notes && <Row k="Notes" v={c.notes} />}
@@ -182,8 +182,13 @@ function Action({ href, icon, label, primary, external }: { href?: string; icon:
   return <a href={href} className={cls} {...(external ? { target: "_blank", rel: "noreferrer" } : {})}>{icon}{label}</a>;
 }
 
-const Row = ({ k, v }: { k: string; v: string }) => (
-  <div className="flex gap-3"><dt className="w-20 shrink-0 text-mist-500">{k}</dt><dd className="min-w-0 break-words font-medium">{v}</dd></div>
+const Row = ({ k, v, href }: { k: string; v: string; href?: string }) => (
+  <div className="flex gap-3">
+    <dt className="w-20 shrink-0 text-mist-500">{k}</dt>
+    <dd className="min-w-0 break-words font-medium">
+      {href ? <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-start gap-1 text-navy-600 underline decoration-navy-600/30 underline-offset-2">{v}<MapPin className="mt-0.5 size-4 shrink-0" aria-label="Open in Google Maps" /></a> : v}
+    </dd>
+  </div>
 );
 
 function DealCard({ deal, customer, onEdit, onQuote, onTask }: { deal: Deal; customer: Customer; onEdit: () => void; onQuote: () => void; onTask: () => void }) {
