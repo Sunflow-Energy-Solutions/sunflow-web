@@ -7,7 +7,7 @@ import { CustomerSheet, DealSheet, LostSheet, QuoteSheet, TaskSheet, XeroSheet }
 import { outstandingRequired } from "../checklist";
 import { useXeroStatus } from "../xero";
 import { TaskRow } from "../components/rows";
-import { Avatar, Button, Card, Empty, Input, SectionTitle, Select, StageBadge } from "../components/ui";
+import { Avatar, Button, Card, Empty, SectionTitle, Select, StageBadge, Textarea } from "../components/ui";
 import { useStore } from "../store";
 import { STAGES, type Customer, type Deal, type Note, type Stage, type Task } from "../types";
 import { KIND_STYLE, buildEvents } from "../events";
@@ -76,6 +76,26 @@ export default function CustomerDetail({ id }: { id: string }) {
         </dl>
       </Card>
 
+      <Card className="mt-3 p-3">
+        <div className="mb-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Type of note">
+          {([["note", "Note"], ["call", "Call"], ["visit", "Visit"], ["email", "Email"]] as const).map(([k, label]) => (
+            <button key={k} type="button" role="radio" aria-checked={noteKind === k} onClick={() => setNoteKind(k)} className={"min-h-9 rounded-full border px-3.5 text-sm font-semibold " + (noteKind === k ? "border-navy-900 bg-navy-900 text-white" : "border-mist-200 bg-white text-mist-500")}>{label}</button>
+          ))}
+        </div>
+        <Textarea rows={2} value={noteText} onChange={(e) => setNoteText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addLogged(); }} placeholder="Add a note: what was said, what they want, what to do next..." />
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <span className="text-xs text-mist-400">Saved with today's date and time</span>
+          <Button onClick={addLogged} disabled={!noteText.trim()}><Plus className="size-4" /> Save note</Button>
+        </div>
+        {notes.filter((n) => n.kind !== "system").slice(0, 2).map((n) => (
+          <div key={n.id} className="mt-3 border-t border-mist-100 pt-2.5 text-sm">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-mist-400">{n.kind}</span>
+            <span className="ml-2 text-xs text-mist-400">{fmtDate(n.createdAt)}</span>
+            <p className="mt-0.5 whitespace-pre-wrap break-words">{n.text}</p>
+          </div>
+        ))}
+      </Card>
+
       <SectionTitle action={<button onClick={() => setDealSheet({})} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-navy-600"><Plus className="size-4" /> Add system</button>}>
         Systems &amp; quotes
       </SectionTitle>
@@ -122,16 +142,6 @@ export default function CustomerDetail({ id }: { id: string }) {
 
       <SectionTitle>History</SectionTitle>
       <Card className="p-3">
-        <div className="mb-2 flex gap-2">
-          <Select value={noteKind} onChange={(e) => setNoteKind(e.target.value as Note["kind"])} className="w-32 shrink-0" aria-label="Type">
-            <option value="note">Note</option>
-            <option value="call">Call</option>
-            <option value="visit">Visit</option>
-            <option value="email">Email</option>
-          </Select>
-          <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addLogged()} placeholder="What happened?" />
-          <Button onClick={addLogged} disabled={!noteText.trim()}>Add</Button>
-        </div>
         {notes.length === 0 ? (
           <p className="px-1 py-3 text-sm text-mist-500">Calls, visits and notes you log appear here.</p>
         ) : (
